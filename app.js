@@ -1,5 +1,5 @@
 /**
- * Snoopy Garden Smart Vehicle & Cart Rental System - Robust Multi-device Sync (app.js)
+ * Snoopy Garden Smart Vehicle & Cart Rental System - Perfect Realtime Cloud Sync (app.js)
  */
 
 // User Specified Vehicle List (Total 5 Vehicles)
@@ -141,7 +141,7 @@ function updateProfileUI() {
 function updateSyncBannerStatus() {
   if (webhookUrl) {
     bannerStatusIndicator.className = 'status-indicator online';
-    bannerText.textContent = `구글 시트 연동 활성화됨 (모바일 & PC 다중 기기 실시간 동기화 지원)`;
+    bannerText.textContent = `구글 시트 연동 활성화됨 (모바일 & PC 다중 기기 실시간 동기화 구동 중)`;
   } else {
     bannerStatusIndicator.className = 'status-indicator offline';
     bannerText.textContent = '구글 시트 연동이 설정되지 않았습니다.';
@@ -302,7 +302,7 @@ function startCloudSyncLoop() {
   fetchCloudCartStatus(false);
   setInterval(() => {
     fetchCloudCartStatus(false);
-  }, 5000);
+  }, 4000);
 }
 
 function fetchCloudCartStatus(showToast = false) {
@@ -315,9 +315,8 @@ function fetchCloudCartStatus(showToast = false) {
       try {
         rows = JSON.parse(text);
       } catch (e) {
-        // GAS returned plain text instead of JSON (needs updated doGet)
         if (showToast) {
-          alert('구글 스크립트 업데이트가 필요합니다. 상단 [연동 설정]의 안내 코드로 구글 스크립트를 새 배포 해주세요!');
+          alert('구글 스크립트를 최신 [새 배포]로 업데이트해 주세요!');
         }
         return;
       }
@@ -325,7 +324,8 @@ function fetchCloudCartStatus(showToast = false) {
       if (!Array.isArray(rows) || rows.length <= 1) return;
 
       const cloudStatusMap = {};
-      for (let i = 1; i < rows.length; i++) {
+      // Iterate backwards from the LATEST row at the bottom of Google Sheets
+      for (let i = rows.length - 1; i >= 1; i--) {
         const r = rows[i];
         const rawCartName = String(r[1] || '');
         const renter = String(r[2] || '');
@@ -340,8 +340,9 @@ function fetchCloudCartStatus(showToast = false) {
         else if (rawCartName.includes('스누피 버스') || rawCartName.includes('BUS-SNOOPY')) matchedCartId = 'BUS-SNOOPY';
         else if (rawCartName.includes('벨 버스') || rawCartName.includes('BUS-BELLE')) matchedCartId = 'BUS-BELLE';
 
-        if (matchedCartId) {
-          const isCurrentlyInUse = returnTimeStr.includes('대여 중') || returnTimeStr === '';
+        if (matchedCartId && !cloudStatusMap[matchedCartId]) {
+          // This is the LATEST recorded status row for this vehicle!
+          const isCurrentlyInUse = returnTimeStr.includes('대여 중') || returnTimeStr === '' || returnTimeStr === '-';
           cloudStatusMap[matchedCartId] = {
             inUse: isCurrentlyInUse,
             renter: renter,
