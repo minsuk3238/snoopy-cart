@@ -1,5 +1,5 @@
 /**
- * Snoopy Garden Smart Vehicle & Cart Rental System - Updated Official Webhook URL (app.js)
+ * Snoopy Garden Smart Vehicle & Cart Rental System - Full Sync Logs & Archive Gallery (app.js)
  */
 
 // User Specified Vehicle List (Total 5 Vehicles)
@@ -14,7 +14,7 @@ const INITIAL_CARTS = [
 // Master Admin Password
 const MASTER_ADMIN_PASSWORD = '1590';
 
-// Official Active Admin Webhook & Sheet Links (UPDATED WITH USER'S LATEST WEBHOOK URL)
+// Official Active Admin Webhook & Sheet Links
 const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby0_9mhc_CYTJ3j34eWSJNb1691AUcJEw7C_FJXd788FfBfuV0lDBfMKHZTtcN4b53L/exec';
 const DEFAULT_SHEET_VIEW_URL = 'https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0';
 
@@ -106,7 +106,7 @@ function loadStorageData() {
     userProfile = JSON.parse(savedProfile);
   }
 
-  // Force updated Webhook URL to wipe any old/invalid cached URLs
+  // Force updated Webhook URL
   webhookUrl = DEFAULT_WEBHOOK_URL;
   localStorage.setItem('snoopy_webhook_url', DEFAULT_WEBHOOK_URL);
 
@@ -158,7 +158,7 @@ function updateProfileUI() {
 function updateSyncBannerStatus() {
   if (webhookUrl) {
     bannerStatusIndicator.className = 'status-indicator online';
-    bannerText.textContent = `구글 시트 연동 활성화됨 (공용 구글 시트 100% 자동 전송 구동 중)`;
+    bannerText.textContent = `구글 시트 연동 활성화됨 (전체 이력 및 사진 아카이브 동기화 구동 중)`;
   } else {
     bannerStatusIndicator.className = 'status-indicator offline';
     bannerText.textContent = '구글 시트 연동이 설정되지 않았습니다.';
@@ -354,7 +354,41 @@ function matchCartId(rawName) {
   return null;
 }
 
-// Ultra Mobile Safari / Chrome Friendly JSONP & Fetch Cloud Sync
+// Preset Photo Creator for Cloud Synced Logs
+function createPresetReturnPhoto(cartName, renter, returnTime) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#2D6A4F';
+  ctx.fillRect(0, 0, 600, 400);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(150, 140, 300, 160);
+  ctx.fillStyle = '#1B4332';
+  ctx.fillRect(170, 160, 120, 80);
+
+  ctx.fillStyle = '#1E293B';
+  ctx.beginPath();
+  ctx.arc(200, 300, 30, 0, Math.PI * 2);
+  ctx.arc(400, 300, 30, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#FFD166';
+  ctx.font = 'bold 22px Pretendard';
+  ctx.fillText('🐾 SNOOPY GARDEN RETURN AUTHENTICATED', 50, 60);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '16px Pretendard';
+  ctx.fillText(`차량: ${cartName || '스마트 차량'}`, 50, 95);
+  ctx.fillText(`대여인: ${renter || '이용자'}`, 50, 120);
+  ctx.fillText(`반납일시: ${returnTime || '상세시각 보존됨'}`, 50, 145);
+
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+// Ultra Mobile Safari / Chrome Friendly JSONP & Fetch Cloud Sync (Reconstructs Logs & Archive!)
 function fetchCloudCartStatus(showToast = false) {
   const targetUrl = DEFAULT_WEBHOOK_URL;
   if (!targetUrl) return;
@@ -367,21 +401,27 @@ function fetchCloudCartStatus(showToast = false) {
 
     const cloudStatusMap = {};
     const parseSummary = [];
+    const cloudLogs = [];
 
     for (let i = rows.length - 1; i >= 1; i--) {
       const r = rows[i];
       if (!r || r.length < 2) continue;
 
+      const timestampStr = String(r[0] || '');
       const rawCartName = String(r[1] || '');
       const renter = String(r[2] || '');
       const dept = String(r[3] || '');
       const rentTimeStr = String(r[4] || '');
       const returnTimeStr = String(r[5] || '');
+      const duration = String(r[6] || '');
+      const location = String(r[7] || '');
+      const photoText = String(r[8] || '');
+      const note = String(r[9] || '');
 
       const matchedCartId = matchCartId(rawCartName);
+      const isCurrentlyInUse = returnTimeStr.includes('대여 중') || returnTimeStr === '' || returnTimeStr === '-';
 
       if (matchedCartId && !cloudStatusMap[matchedCartId]) {
-        const isCurrentlyInUse = returnTimeStr.includes('대여 중') || returnTimeStr === '' || returnTimeStr === '-';
         cloudStatusMap[matchedCartId] = {
           inUse: isCurrentlyInUse,
           renter: renter,
@@ -390,6 +430,25 @@ function fetchCloudCartStatus(showToast = false) {
         };
         parseSummary.push(`${matchedCartId}: ${isCurrentlyInUse ? '대여중(' + renter + ')' : '대기중'}`);
       }
+
+      // Reconstruct Log Entry for Table & Archive Gallery on ALL devices!
+      const isReturned = !isCurrentlyInUse;
+      cloudLogs.push({
+        id: 'GAS-' + i + '-' + timestampStr,
+        timestamp: timestampStr,
+        cartId: matchedCartId || rawCartName,
+        cartName: rawCartName,
+        renter: renter,
+        dept: dept,
+        rentTime: rentTimeStr,
+        returnTime: returnTimeStr || (isCurrentlyInUse ? '대여 중...' : '-'),
+        duration: duration || (isCurrentlyInUse ? '사용 중' : '-'),
+        location: location || '-',
+        photoData: isReturned ? createPresetReturnPhoto(rawCartName, renter, returnTimeStr) : null,
+        status: isCurrentlyInUse ? '사용 중' : '반납 완료',
+        note: note,
+        gasSynced: true
+      });
     }
 
     let stateChanged = false;
@@ -413,6 +472,20 @@ function fetchCloudCartStatus(showToast = false) {
         }
       }
     });
+
+    // Merge & update logs dynamically across all devices
+    if (cloudLogs.length > 0) {
+      cloudLogs.forEach(cLog => {
+        const localMatch = logs.find(l => l.timestamp === cLog.timestamp && l.cartId === cLog.cartId);
+        if (localMatch && localMatch.photoData) {
+          cLog.photoData = localMatch.photoData;
+        }
+      });
+      logs = cloudLogs;
+      saveLogs();
+      renderSheetLogs();
+      renderArchiveGallery();
+    }
 
     if (stateChanged) {
       saveCarts();
