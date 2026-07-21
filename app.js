@@ -1,5 +1,5 @@
 /**
- * Snoopy Garden Smart Vehicle & Cart Rental System - Strict Sheet-Gated Rental (app.js)
+ * Snoopy Garden Smart Vehicle & Cart Rental System - Strict Double-Rent Protection (app.js)
  */
 
 // User Specified Vehicle List (Total 5 Vehicles)
@@ -157,7 +157,7 @@ function updateProfileUI() {
 function updateSyncBannerStatus() {
   if (webhookUrl) {
     bannerStatusIndicator.className = 'status-indicator online';
-    bannerText.textContent = `구글 시트 연동 활성화됨 (시트 동기화 검증 방식 구동 중)`;
+    bannerText.textContent = `구글 시트 연동 활성화됨 (실시간 중복 대여 선점 차단 구동 중)`;
   } else {
     bannerStatusIndicator.className = 'status-indicator offline';
     bannerText.textContent = '구글 시트 연동이 설정되지 않았습니다.';
@@ -334,12 +334,12 @@ function openProfileModal() {
   openModal('profile-modal');
 }
 
-// Multi-device Cloud Sync Loop via Google Sheets
+// Multi-device Cloud Sync Loop via Google Sheets (every 3 seconds)
 function startCloudSyncLoop() {
   fetchCloudCartStatus(false);
   setInterval(() => {
     fetchCloudCartStatus(false);
-  }, 4000);
+  }, 3000);
 }
 
 // Ultra Mobile Safari / Chrome Friendly JSONP & Fetch Cloud Sync
@@ -563,6 +563,12 @@ window.openRentModal = function(cartId) {
   const cart = carts.find(c => c.id === cartId);
   if (!cart) return;
 
+  // Real-time pre-open check: if cart is already in use locally, alert and return!
+  if (cart.status === 'IN_USE') {
+    alert(`⚠️ [${cart.name}]은(는) 이미 ${cart.currentRenter || '다른 이용자'}님이 대여 중입니다.`);
+    return;
+  }
+
   document.getElementById('rent-cart-id').value = cartId;
   document.getElementById('rent-modal-title').textContent = `${cart.icon || '🚗'} ${cart.name} 대여하기`;
 
@@ -585,7 +591,7 @@ window.openRentModal = function(cartId) {
   openModal('rent-modal');
 };
 
-// Strict Sheet-Gated Rent Handler: Blocks rental if Google Sheet logging fails!
+// Double-Rent Prevention Rent Handler with Instant Pre-check against Google Sheet!
 function handleRentSubmit(e) {
   e.preventDefault();
   const cartId = document.getElementById('rent-cart-id').value;
@@ -606,85 +612,143 @@ function handleRentSubmit(e) {
   const submitBtn = e.target.querySelector('button[type="submit"]');
   const originalText = submitBtn.textContent;
   submitBtn.disabled = true;
-  submitBtn.textContent = '⏳ 구글 시트 실시간 검증 중...';
+  submitBtn.textContent = '🔍 실시간 선점 여부 확인 중...';
 
-  const nowMs = Date.now();
-  const rentTimeStr = formatTimestamp(new Date(nowMs));
+  // STEP 1: Fast Live Check against Google Sheet before allowing POST!
+  fetch(`${targetUrl}?action=getStatus`)
+    .then(res => res.text())
+    .then(text => {
+      let rows = [];
+      try { rows = JSON.parse(text); } catch (err) {}
 
-  const logEntry = {
-    id: 'LOG-' + nowMs,
-    timestamp: rentTimeStr,
-    cartId: cart.id,
-    cartName: cart.name,
-    renter: renterName,
-    dept: renterDept,
-    phone: renterPhone,
-    rentTime: rentTimeStr,
-    returnTime: '대여 중...',
-    duration: '사용 중',
-    location: '-',
-    photoData: null,
-    status: '사용 중',
-    note: rentNote,
-    gasSynced: false
-  };
+      let alreadyInUseByOther = false;
+      let existingRenter = '';
 
-  // Perform synchronous Sheet POST check
-  fetch(targetUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      timestamp: logEntry.timestamp,
-      cartId: logEntry.cartId + ' (' + logEntry.cartName + ')',
-      renter: logEntry.renter,
-      dept: logEntry.dept || '',
-      rentTime: logEntry.rentTime,
-      returnTime: logEntry.returnTime,
-      duration: logEntry.duration,
-      location: logEntry.location,
-      photoUrl: '브라우저 갤러리 보존됨',
-      note: logEntry.note || ''
+      if (Array.isArray(rows)) {
+        for (let i = rows.length - 1; i >= 1; i--) {
+          const r = rows[i];
+          if (!r || r.length < 6) continue;
+
+          const rawCartName = String(r[1] || '');
+          const returnTimeStr = String(r[5] || '');
+
+          let matchedId = null;
+          if (rawCartName.includes('1호') || rawCartName.includes('CART-01')) matchedId = 'CART-01';
+          else if (rawCartName.includes('3호') || rawCartName.includes('CART-03')) matchedId = 'CART-03';
+          else if (rawCartName.includes('라보') || rawCartName.includes('LABO-01')) matchedId = 'LABO-01';
+          else if (rawCartName.includes('스누피 버스') || rawCartName.includes('BUS-SNOOPY')) matchedId = 'BUS-SNOOPY';
+          else if (rawCartName.includes('벨 버스') || rawCartName.includes('BUS-BELLE')) matchedId = 'BUS-BELLE';
+
+          if (matchedId === cart.id) {
+            const inUse = returnTimeStr.includes('대여 중') || returnTimeStr === '' || returnTimeStr === '-';
+            if (inUse) {
+              alreadyInUseByOther = true;
+              existingRenter = String(r[2] || '다른 이용자');
+            }
+            break;
+          }
+        }
+      }
+
+      // If already rented by someone else -> BLOCK DOUBLE RENTAL!
+      if (alreadyInUseByOther) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        closeModal('rent-modal');
+
+        cart.status = 'IN_USE';
+        cart.currentRenter = existingRenter;
+        saveCarts();
+        renderCarts();
+        updateStats();
+
+        alert(`⛔ [중복 대여 선점 차단!]\n\n[${cart.name}]은(는) 방금 ${existingRenter}님이 먼저 대여를 완료하셨습니다!\n화면 상태가 [사용 중]으로 실시간 업데이트됩니다.`);
+        return;
+      }
+
+      // STEP 2: Proceed with POST
+      submitBtn.textContent = '⏳ 구글 시트 대여 기록 중...';
+
+      const nowMs = Date.now();
+      const rentTimeStr = formatTimestamp(new Date(nowMs));
+
+      const logEntry = {
+        id: 'LOG-' + nowMs,
+        timestamp: rentTimeStr,
+        cartId: cart.id,
+        cartName: cart.name,
+        renter: renterName,
+        dept: renterDept,
+        phone: renterPhone,
+        rentTime: rentTimeStr,
+        returnTime: '대여 중...',
+        duration: '사용 중',
+        location: '-',
+        photoData: null,
+        status: '사용 중',
+        note: rentNote,
+        gasSynced: false
+      };
+
+      fetch(targetUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          timestamp: logEntry.timestamp,
+          cartId: logEntry.cartId + ' (' + logEntry.cartName + ')',
+          renter: logEntry.renter,
+          dept: logEntry.dept || '',
+          rentTime: logEntry.rentTime,
+          returnTime: logEntry.returnTime,
+          duration: logEntry.duration,
+          location: logEntry.location,
+          photoUrl: '브라우저 갤러리 보존됨',
+          note: logEntry.note || ''
+        })
+      })
+      .then(() => {
+        logEntry.gasSynced = true;
+
+        if (!userProfile.name) {
+          userProfile.name = renterName;
+          userProfile.dept = renterDept;
+          userProfile.phone = renterPhone;
+          saveUserProfile();
+        }
+
+        cart.status = 'IN_USE';
+        cart.currentRenter = renterName;
+        cart.currentDept = renterDept;
+        cart.phone = renterPhone;
+        cart.rentTime = nowMs;
+        cart.rentTimeStr = rentTimeStr;
+
+        logs.unshift(logEntry);
+        saveCarts();
+        saveLogs();
+
+        renderCarts();
+        renderSheetLogs();
+        updateStats();
+        closeModal('rent-modal');
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+
+        alert(`🚀 [${cart.name}] 구글 시트 선점 검증 완료! 정상 대여 등록되었습니다.`);
+      })
+      .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+        alert(`❌ [대여 승인 실패] 구글 시트에 이력을 기록하지 못했습니다: ${err.message}`);
+      });
     })
-  })
-  .then(() => {
-    // Sheet Sync Succeeded! Allow Rental!
-    logEntry.gasSynced = true;
-
-    if (!userProfile.name) {
-      userProfile.name = renterName;
-      userProfile.dept = renterDept;
-      userProfile.phone = renterPhone;
-      saveUserProfile();
-    }
-
-    cart.status = 'IN_USE';
-    cart.currentRenter = renterName;
-    cart.currentDept = renterDept;
-    cart.phone = renterPhone;
-    cart.rentTime = nowMs;
-    cart.rentTimeStr = rentTimeStr;
-
-    logs.unshift(logEntry);
-    saveCarts();
-    saveLogs();
-
-    renderCarts();
-    renderSheetLogs();
-    updateStats();
-    closeModal('rent-modal');
-
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
-
-    alert(`🚀 [${cart.name}] 구글 시트 검증 완료! 대여가 승인되었습니다.`);
-  })
-  .catch(err => {
-    // Sheet Sync Failed! BLOCK RENTAL!
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
-    alert(`❌ [대여 승인 거절] 구글 시트에 대여 이력을 전송하지 못했습니다.\n네트워크 연결 및 구글 시트 연동 상태를 확인해 주세요.\n오류 내용: ${err.message}`);
-  });
+    .catch(err => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
+      alert(`❌ [대여 승인 실패] 구글 시트 실시간 선점 상태를 확인하지 못했습니다: ${err.message}`);
+    });
 }
 
 // Return Modal Logic
@@ -882,7 +946,6 @@ function handleReturnSubmit(e) {
   activeLog.status = '반납 완료';
   activeLog.note = note;
 
-  // Perform Sheet POST check
   fetch(targetUrl, {
     method: 'POST',
     mode: 'no-cors',
@@ -901,7 +964,6 @@ function handleReturnSubmit(e) {
     })
   })
   .then(() => {
-    // Sheet Sync Succeeded! Commit Return!
     activeLog.gasSynced = true;
 
     cart.status = 'AVAILABLE';
@@ -928,7 +990,7 @@ function handleReturnSubmit(e) {
   .catch(err => {
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
-    alert(`❌ [반납 실패] 구글 시트에 반납 이력을 기록하지 못했습니다.\n네트워크 및 연동 상태를 확인해 주세요.\n오류 내용: ${err.message}`);
+    alert(`❌ [반납 실패] 구글 시트에 반납 이력을 기록하지 못했습니다: ${err.message}`);
   });
 }
 
