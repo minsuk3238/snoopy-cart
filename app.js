@@ -1,5 +1,5 @@
 /**
- * Snoopy Garden Smart Vehicle & Cart Rental System - Robust Mobile Vehicles & Bus Sync (app.js)
+ * Snoopy Garden Smart Vehicle & Cart Rental System - Updated Official Webhook URL (app.js)
  */
 
 // User Specified Vehicle List (Total 5 Vehicles)
@@ -14,8 +14,8 @@ const INITIAL_CARTS = [
 // Master Admin Password
 const MASTER_ADMIN_PASSWORD = '1590';
 
-// Default Admin Webhook & Sheet Links
-const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz0jOtqY_F6UkhcMCiEl9D_vIv3vCOeLMCBn8ZjZC4u6Vmgl5M2Yf2e7vpXZKPr/exec';
+// Official Active Admin Webhook & Sheet Links (UPDATED WITH USER'S LATEST WEBHOOK URL)
+const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycby0_9mhc_CYTJ3j34eWSJNb1691AUcJEw7C_FJXd788FfBfuV0lDBfMKHZTtcN4b53L/exec';
 const DEFAULT_SHEET_VIEW_URL = 'https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0';
 
 // App State
@@ -86,9 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
   startCloudSyncLoop();
 });
 
-// Load persistent data & sync vehicle list
+// Load persistent data & sync vehicle list with latest Webhook URL
 function loadStorageData() {
-  const savedCarts = localStorage.getItem('snoopy_carts_v4');
+  const savedCarts = localStorage.getItem('snoopy_carts_v5');
   if (savedCarts) {
     carts = JSON.parse(savedCarts);
   } else {
@@ -106,13 +106,9 @@ function loadStorageData() {
     userProfile = JSON.parse(savedProfile);
   }
 
-  const savedWebhook = localStorage.getItem('snoopy_webhook_url');
-  if (savedWebhook && savedWebhook.trim().startsWith('https://script.google.com')) {
-    webhookUrl = savedWebhook.trim();
-  } else {
-    webhookUrl = DEFAULT_WEBHOOK_URL;
-    localStorage.setItem('snoopy_webhook_url', DEFAULT_WEBHOOK_URL);
-  }
+  // Force updated Webhook URL to wipe any old/invalid cached URLs
+  webhookUrl = DEFAULT_WEBHOOK_URL;
+  localStorage.setItem('snoopy_webhook_url', DEFAULT_WEBHOOK_URL);
 
   const savedSheetUrl = localStorage.getItem('snoopy_sheet_view_url');
   sheetViewUrl = savedSheetUrl ? savedSheetUrl : DEFAULT_SHEET_VIEW_URL;
@@ -131,7 +127,7 @@ function updateSheetLinks() {
 }
 
 function saveCarts() {
-  localStorage.setItem('snoopy_carts_v4', JSON.stringify(carts));
+  localStorage.setItem('snoopy_carts_v5', JSON.stringify(carts));
   if (window.BroadcastChannel) {
     const bc = new BroadcastChannel('snoopy_cart_sync');
     bc.postMessage({ type: 'CART_UPDATE', carts: carts, logs: logs });
@@ -162,7 +158,7 @@ function updateProfileUI() {
 function updateSyncBannerStatus() {
   if (webhookUrl) {
     bannerStatusIndicator.className = 'status-indicator online';
-    bannerText.textContent = `구글 시트 연동 활성화됨 (모바일 실시간 동기화 구동 중)`;
+    bannerText.textContent = `구글 시트 연동 활성화됨 (공용 구글 시트 100% 자동 전송 구동 중)`;
   } else {
     bannerStatusIndicator.className = 'status-indicator offline';
     bannerText.textContent = '구글 시트 연동이 설정되지 않았습니다.';
@@ -298,7 +294,7 @@ function setupEventListeners() {
   document.getElementById('archive-cart-filter').addEventListener('change', renderArchiveGallery);
 
   document.getElementById('save-settings-btn').addEventListener('click', () => {
-    webhookUrl = gasWebhookUrlInput.value.trim();
+    webhookUrl = gasWebhookUrlInput.value.trim() || DEFAULT_WEBHOOK_URL;
     if (gasSheetUrlInput.value.trim()) {
       sheetViewUrl = gasSheetUrlInput.value.trim();
     }
@@ -321,7 +317,7 @@ function setupEventListeners() {
 function resetEntireSystem() {
   carts = JSON.parse(JSON.stringify(INITIAL_CARTS));
   logs = [];
-  localStorage.setItem('snoopy_carts_v4', JSON.stringify(carts));
+  localStorage.setItem('snoopy_carts_v5', JSON.stringify(carts));
   localStorage.removeItem('snoopy_logs');
   
   renderCarts();
@@ -360,7 +356,7 @@ function matchCartId(rawName) {
 
 // Ultra Mobile Safari / Chrome Friendly JSONP & Fetch Cloud Sync
 function fetchCloudCartStatus(showToast = false) {
-  const targetUrl = (webhookUrl && webhookUrl.startsWith('https://script.google.com')) ? webhookUrl : DEFAULT_WEBHOOK_URL;
+  const targetUrl = DEFAULT_WEBHOOK_URL;
   if (!targetUrl) return;
 
   const callbackName = 'gasCallback_' + Date.now();
@@ -886,7 +882,7 @@ function handleReturnSubmit(e) {
 
 // Ultra-robust Google Apps Script Webhook sender with fallback
 function sendToGoogleSheet(logData) {
-  const targetUrl = (webhookUrl && webhookUrl.startsWith('https://script.google.com')) ? webhookUrl : DEFAULT_WEBHOOK_URL;
+  const targetUrl = DEFAULT_WEBHOOK_URL;
   if (!targetUrl) return;
 
   const payload = JSON.stringify({
@@ -1085,5 +1081,5 @@ function updateStats() {
   statTotal.textContent = `${total}대`;
   statAvailable.textContent = `${available}대`;
   statInUse.textContent = `${inUse}대`;
-  statReturned.textContent = `${returnedCount}cmd`;
+  statReturned.textContent = `${returnedCount}건`;
 }
