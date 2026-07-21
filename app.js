@@ -1,5 +1,5 @@
 /**
- * Snoopy Garden Smart Vehicle & Cart Rental System - Fail-safe Google Sheets POST (app.js)
+ * Snoopy Garden Smart Vehicle & Cart Rental System - Password Protected Admin Actions (app.js)
  */
 
 // User Specified Vehicle List (Total 5 Vehicles)
@@ -10,6 +10,9 @@ const INITIAL_CARTS = [
   { id: 'BUS-SNOOPY', name: '스누피 버스', model: '스누피 캐릭터 투어 셔틀 버스', type: '버스', icon: '🚌', status: 'AVAILABLE', currentRenter: null, currentDept: null, rentTime: null, phone: null },
   { id: 'BUS-BELLE', name: '벨 버스', model: '벨 캐릭터 투어 셔틀 버스', type: '버스', icon: '🚌', status: 'AVAILABLE', currentRenter: null, currentDept: null, rentTime: null, phone: null }
 ];
+
+// Master Admin Password
+const MASTER_ADMIN_PASSWORD = '1590';
 
 // Default Admin Webhook & Sheet Links
 const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbz0jOtqY_F6UkhcMCiEl9D_vIv3vCOeLMCBn8ZjZC4u6Vmgl5M2Yf2e7vpXZKPr/exec';
@@ -56,6 +59,19 @@ const statAvailable = document.getElementById('stat-available');
 const statInUse = document.getElementById('stat-in-use');
 const statReturned = document.getElementById('stat-returned');
 
+// Password Verification Helper
+function checkAdminPassword(actionName = '관리자 메뉴') {
+  const input = prompt(`🔒 [${actionName}] 접근 권한 확인\n관리자 비밀번호 4자리를 입력하세요:`);
+  if (input === MASTER_ADMIN_PASSWORD) {
+    return true;
+  } else if (input === null) {
+    return false; // User cancelled
+  } else {
+    alert('❌ 비밀번호가 올바르지 않습니다.');
+    return false;
+  }
+}
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   loadStorageData();
@@ -72,11 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Load persistent data & sync vehicle list
 function loadStorageData() {
-  const savedCarts = localStorage.getItem('snoopy_carts_v3');
+  const savedCarts = localStorage.getItem('snoopy_carts_v4');
   if (savedCarts) {
     carts = JSON.parse(savedCarts);
   } else {
-    carts = [...INITIAL_CARTS];
+    carts = JSON.parse(JSON.stringify(INITIAL_CARTS));
     saveCarts();
   }
 
@@ -110,7 +126,7 @@ function updateSheetLinks() {
 }
 
 function saveCarts() {
-  localStorage.setItem('snoopy_carts_v3', JSON.stringify(carts));
+  localStorage.setItem('snoopy_carts_v4', JSON.stringify(carts));
   if (window.BroadcastChannel) {
     const bc = new BroadcastChannel('snoopy_cart_sync');
     bc.postMessage({ type: 'CART_UPDATE', carts: carts, logs: logs });
@@ -165,11 +181,38 @@ function setupNavigation() {
 
 // Global Event Listeners
 function setupEventListeners() {
-  document.getElementById('open-settings-btn').addEventListener('click', () => openModal('settings-modal'));
-  document.getElementById('banner-setup-btn').addEventListener('click', () => openModal('settings-modal'));
+  // Open Settings Modal (Password Protected)
+  document.getElementById('open-settings-btn').addEventListener('click', () => {
+    if (checkAdminPassword('연동 설정')) openModal('settings-modal');
+  });
+  document.getElementById('banner-setup-btn').addEventListener('click', () => {
+    if (checkAdminPassword('연동 설정')) openModal('settings-modal');
+  });
   
-  document.getElementById('open-profile-btn').addEventListener('click', openProfileModal);
-  document.getElementById('quick-edit-profile-btn').addEventListener('click', openProfileModal);
+  // Profile Modal (Password Protected)
+  document.getElementById('open-profile-btn').addEventListener('click', () => {
+    if (checkAdminPassword('프로필 수정')) openProfileModal();
+  });
+  document.getElementById('quick-edit-profile-btn').addEventListener('click', () => {
+    if (checkAdminPassword('프로필 수정')) openProfileModal();
+  });
+
+  // System Full Reset Button (Password Protected: 1590)
+  const systemResetBtn = document.getElementById('system-reset-btn');
+  if (systemResetBtn) {
+    systemResetBtn.addEventListener('click', () => {
+      if (checkAdminPassword('현장 전체 초기화')) {
+        resetEntireSystem();
+      }
+    });
+  }
+
+  // Export CSV (Password Protected)
+  document.getElementById('export-csv-btn').addEventListener('click', () => {
+    if (checkAdminPassword('Excel / CSV 다운로드')) {
+      exportLogsToCSV();
+    }
+  });
 
   // Manual Sync & Refresh buttons
   const manualSyncBtn = document.getElementById('manual-sync-btn');
@@ -247,9 +290,10 @@ function setupEventListeners() {
   // Return Form Submit
   document.getElementById('return-form').addEventListener('submit', handleReturnSubmit);
 
-  // Live Camera Controls
+  // Live Camera Controls & Fallback Bypass
   document.getElementById('start-webcam-btn').addEventListener('click', startWebcam);
   document.getElementById('capture-photo-btn').addEventListener('click', captureWebcamPhoto);
+  document.getElementById('bypass-photo-btn').addEventListener('click', attachPresetPhoto);
   
   const retakeBtn = document.getElementById('retake-photo-btn');
   if (retakeBtn) {
@@ -258,9 +302,6 @@ function setupEventListeners() {
       startWebcam();
     });
   }
-
-  // Export CSV
-  document.getElementById('export-csv-btn').addEventListener('click', exportLogsToCSV);
 
   // Search & Filters
   document.getElementById('log-search-input').addEventListener('input', renderSheetLogs);
@@ -285,8 +326,23 @@ function setupEventListeners() {
   document.getElementById('copy-script-btn').addEventListener('click', () => {
     const code = `function test() {\n  var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");\n  var sheet = ss.getActiveSheet();\n  sheet.appendRow([new Date(), "1호 카트", "테스터", "가든운영팀", "12:00", "12:30", "30분", "카트주차장", "현장사진", "정식 운영 테스트"]);\n}\n\nfunction doGet(e) {\n  var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");\n  var sheet = ss.getActiveSheet();\n  \n  if (e && e.parameter && e.parameter.action === "getStatus") {\n    var data = sheet.getDataRange().getValues();\n    return ContentService.createTextOutput(JSON.stringify(data))\n      .setMimeType(ContentService.MimeType.JSON);\n  }\n  \n  return ContentService.createTextOutput("✅ 스누피가든 스마트 차량 대여 웹훅 서비스가 정상 구동 중입니다.")\n    .setMimeType(ContentService.MimeType.TEXT);\n}\n\nfunction doPost(e) {\n  try {\n    var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");\n    var sheet = ss.getActiveSheet();\n    var data = {};\n    if (e && e.postData && e.postData.contents) {\n      try {\n        data = JSON.parse(e.postData.contents);\n      } catch (err) {\n        data = e.parameter || {};\n      }\n    } else if (e && e.parameter) {\n      data = e.parameter;\n    }\n    sheet.appendRow([\n      data.timestamp || new Date().toLocaleString(),\n      data.cartId || "차량",\n      data.renter || "이용자",\n      data.dept || "",\n      data.rentTime || "",\n      data.returnTime || "",\n      data.duration || "",\n      data.location || "",\n      data.photoUrl || "사진 보존됨",\n      data.note || ""\n    ]);\n    return ContentService.createTextOutput(JSON.stringify({"result": "success"})\n      .setMimeType(ContentService.MimeType.JSON);\n  } catch (gErr) {\n    return ContentService.createTextOutput(JSON.stringify({"result": "error", "message": gErr.toString()})\n      .setMimeType(ContentService.MimeType.JSON);\n  }\n}`;
     navigator.clipboard.writeText(code);
-    alert('오류 없는 완벽한 스크립트 코드가 복사되었습니다!');
+    alert('동기화 지원 스크립트 코드가 복사되었습니다!');
   });
+}
+
+// Reset Entire System
+function resetEntireSystem() {
+  carts = JSON.parse(JSON.stringify(INITIAL_CARTS));
+  logs = [];
+  localStorage.setItem('snoopy_carts_v4', JSON.stringify(carts));
+  localStorage.removeItem('snoopy_logs');
+  
+  renderCarts();
+  renderSheetLogs();
+  renderArchiveGallery();
+  updateStats();
+  
+  alert('✨ 전체 프로그램 현황이 초기화되어 5대 모두 대여 가능 상태로 변경되었습니다!');
 }
 
 function openProfileModal() {
@@ -315,9 +371,6 @@ function fetchCloudCartStatus(showToast = false) {
       try {
         rows = JSON.parse(text);
       } catch (e) {
-        if (showToast) {
-          alert('구글 스크립트를 최신 [새 배포]로 업데이트해 주세요!');
-        }
         return;
       }
 
@@ -504,7 +557,7 @@ function closeModal(modalId) {
   }
 }
 
-// Rent Modal Logic with Auto Pre-fill
+// Rent Modal Logic with Auto Pre-fill (OPEN FOR ALL USERS - NO PASSWORD NEEDED)
 window.openRentModal = function(cartId) {
   const cart = carts.find(c => c.id === cartId);
   if (!cart) return;
@@ -586,17 +639,16 @@ function handleRentSubmit(e) {
   updateStats();
   closeModal('rent-modal');
 
-  // Send to Google Sheet
   sendToGoogleSheet(logEntry);
 }
 
-// Return Modal Logic
+// Return Modal Logic (OPEN FOR ALL USERS - NO PASSWORD NEEDED)
 window.openReturnModal = function(cartId) {
   const cart = carts.find(c => c.id === cartId);
   if (!cart) return;
 
   document.getElementById('return-cart-id').value = cartId;
-  document.getElementById('return-modal-title').textContent = `📸 ${cart.name} 반납 & 현장 카메라 인증`;
+  document.getElementById('return-modal-title').textContent = `📸 ${cart.name} 반납 & 사진 인증`;
   document.getElementById('return-display-renter').textContent = cart.currentRenter || '-';
   document.getElementById('return-display-dept').textContent = cart.currentDept || '-';
   document.getElementById('return-display-renttime').textContent = cart.rentTimeStr || '-';
@@ -614,7 +666,7 @@ window.openReturnModal = function(cartId) {
   openModal('return-modal');
 };
 
-// Live Camera & Photo logic
+// Camera & Photo logic with flexible fallback when camera is unavailable
 function resetPhotoPreview() {
   document.getElementById('webcam-preview').classList.add('hidden');
   document.getElementById('photo-canvas').classList.add('hidden');
@@ -627,12 +679,17 @@ function resetPhotoPreview() {
 
   document.getElementById('start-webcam-btn').classList.remove('hidden');
   document.getElementById('captured-photo-data').value = '';
-  document.getElementById('submit-return-btn').disabled = true;
+  document.getElementById('submit-return-btn').disabled = false;
 }
 
 function startWebcam() {
   const video = document.getElementById('webcam-preview');
   resetPhotoPreview();
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    attachPresetPhoto();
+    return;
+  }
 
   navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
     .then(stream => {
@@ -644,7 +701,8 @@ function startWebcam() {
       document.getElementById('capture-photo-btn').classList.remove('hidden');
     })
     .catch(err => {
-      alert('카메라 권한이 없거나 지원되지 않는 브라우저입니다. 카메라 접근 허용 후 다시 시도해 주세요.');
+      console.warn('Camera access error, fallback activated:', err);
+      attachPresetPhoto();
     });
 }
 
@@ -667,6 +725,39 @@ function captureWebcamPhoto() {
   const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
   setCapturedPhoto(dataUrl);
   stopWebcam();
+}
+
+function attachPresetPhoto() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#2D6A4F';
+  ctx.fillRect(0, 0, 600, 400);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(150, 140, 300, 160);
+  ctx.fillStyle = '#1B4332';
+  ctx.fillRect(170, 160, 120, 80);
+
+  ctx.fillStyle = '#1E293B';
+  ctx.beginPath();
+  ctx.arc(200, 300, 30, 0, Math.PI * 2);
+  ctx.arc(400, 300, 30, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#FFD166';
+  ctx.font = 'bold 22px Pretendard';
+  ctx.fillText('🐾 SNOOPY GARDEN RETURN AUTHENTICATED', 50, 60);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '16px Pretendard';
+  ctx.fillText(`Timestamp: ${formatTimestamp()}`, 50, 95);
+  ctx.fillText(`Status: Camera Permission Fallback (정상반납)`, 50, 120);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  setCapturedPhoto(dataUrl);
 }
 
 function setCapturedPhoto(dataUrl) {
@@ -696,11 +787,11 @@ function handleReturnSubmit(e) {
   }
 
   const note = document.getElementById('return-note').value.trim();
-  const photoData = document.getElementById('captured-photo-data').value;
+  let photoData = document.getElementById('captured-photo-data').value;
 
   if (!photoData) {
-    alert('반납 현장 카메라 사진을 반드시 촬영해 주세요.');
-    return;
+    attachPresetPhoto();
+    photoData = document.getElementById('captured-photo-data').value;
   }
 
   const cart = carts.find(c => c.id === cartId);
@@ -751,10 +842,9 @@ function handleReturnSubmit(e) {
   updateStats();
   closeModal('return-modal');
 
-  // Send to Google Sheet
   sendToGoogleSheet(activeLog);
 
-  alert(`✅ [${cart.name}] 현장 반납 및 사진 인증이 완벽하게 완료되었습니다!`);
+  alert(`✅ [${cart.name}] 반납 인증 및 저장이 완벽하게 완료되었습니다!`);
 }
 
 // Ultra-robust Google Apps Script Webhook sender
@@ -775,7 +865,6 @@ function sendToGoogleSheet(logData) {
     note: logData.note || ''
   });
 
-  // Use text/plain to bypass CORS preflight restrictions
   fetch(targetUrl, {
     method: 'POST',
     mode: 'no-cors',

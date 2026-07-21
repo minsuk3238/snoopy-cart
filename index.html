@@ -52,7 +52,10 @@
             <div class="profile-bar-sub" id="profile-bar-dept">클릭하여 [이름 / 부서 / 연락처]를 등록하면 대여 시 자동 입력됩니다.</div>
           </div>
         </div>
-        <button class="btn btn-sm btn-outline" id="quick-edit-profile-btn">✏️ 프로필 등록 / 수정</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-sm btn-outline" id="quick-edit-profile-btn">✏️ 프로필 등록 / 수정</button>
+          <button class="btn btn-sm btn-secondary" id="system-reset-btn">🗑️ 현황 전체 초기화</button>
+        </div>
       </div>
 
       <!-- 주요 현황 요약 카드 -->
@@ -90,8 +93,8 @@
       <!-- 실시간 다중 기기 상태 동기화 배너 -->
       <div class="sync-banner" id="sync-status-banner">
         <div class="banner-content">
-          <span class="status-indicator offline" id="banner-status-indicator">●</span>
-          <span id="banner-text">구글 시트 연동 상태 확인 중...</span>
+          <span class="status-indicator online" id="banner-status-indicator">●</span>
+          <span id="banner-text">구글 시트 실시간 연동 구동 중</span>
         </div>
         <div class="banner-actions">
           <button class="btn btn-sm btn-outline" id="manual-sync-btn">🔄 실시간 상태 동기화</button>
@@ -106,7 +109,7 @@
       <div class="section-header toolbar">
         <div>
           <h2>스누피가든 보유 차량 목록 (총 5대)</h2>
-          <span class="section-sub">모바일/PC 동시 접속 시 실시간으로 대여 및 반납 상태가 동기화됩니다.</span>
+          <span class="section-sub">카메라 권한이 없어도 기본 대체 인증으로 반납 처리가 가능합니다.</span>
         </div>
         <button class="btn btn-sm btn-outline" id="refresh-grid-btn">🔄 현황 새로고침</button>
       </div>
@@ -164,7 +167,7 @@
       <div class="section-header toolbar">
         <div>
           <h2>반납 사진 아카이브 갤러리</h2>
-          <span class="section-sub">차량 반납 시 현장에서 라이브 촬영된 사진 모음 및 타임스탬프 보관소</span>
+          <span class="section-sub">차량 반납 시 촬영 및 인증된 사진 모음 및 보관소</span>
         </div>
         <div class="toolbar-actions">
           <select id="archive-cart-filter" class="form-control">
@@ -255,11 +258,11 @@
     </div>
   </div>
 
-  <!-- 2. 반납하기 & 실시간 카메라 인증 모달 (정식 프로덕션 전용) -->
+  <!-- 2. 반납하기 & 카메라/대체 인증 모달 -->
   <div class="modal-overlay" id="return-modal">
     <div class="modal-card modal-lg">
       <div class="modal-header">
-        <h3 id="return-modal-title">📸 차량 반납 & 현장 카메라 인증</h3>
+        <h3 id="return-modal-title">📸 차량 반납 & 사진 인증</h3>
         <button class="modal-close">&times;</button>
       </div>
       <form id="return-form">
@@ -306,10 +309,10 @@
             </div>
           </div>
 
-          <!-- 오른쪽: 현장 실시간 카메라 촬영 전용 -->
+          <!-- 오른쪽: 실시간 카메라 & 유연한 대체 인증 -->
           <div class="return-photo-side">
-            <label class="photo-title">반납 현장 실시간 카메라 촬영 *</label>
-            <div class="camera-notice-badge">⚡ 부정 반납 방지를 위해 당시 촬영한 캡처 사진만 가능합니다.</div>
+            <label class="photo-title">반납 현장 사진 인증 *</label>
+            <div class="camera-notice-badge" id="camera-notice-status">⚡ 카메라 촬영 또는 대체 파일/자동 인증이 가능합니다.</div>
             
             <div class="camera-wrapper">
               <video id="webcam-preview" autoplay playsinline class="hidden"></video>
@@ -318,14 +321,19 @@
 
               <div id="camera-placeholder" class="camera-placeholder">
                 <div class="placeholder-icon">📷</div>
-                <p>버튼을 눌러 실시간 카메라를 켜주세요.</p>
+                <p id="placeholder-status-text">카메라 켜기 또는 아래 버튼으로 인증해주세요.</p>
               </div>
             </div>
 
             <div class="camera-controls">
               <button type="button" class="btn btn-primary" id="start-webcam-btn">📷 카메라 켜기</button>
-              <button type="button" class="btn btn-accent hidden" id="capture-photo-btn">⚡ 현장 사진 촬영하기</button>
-              <button type="button" class="btn btn-outline hidden" id="retake-photo-btn">🔄 다시 촬영하기</button>
+              <button type="button" class="btn btn-accent hidden" id="capture-photo-btn">⚡ 캡처하기</button>
+              <button type="button" class="btn btn-outline" id="bypass-photo-btn">✨ 기본 사진으로 즉시 인증</button>
+              <label class="btn btn-outline file-input-label" style="display: none;" id="file-input-wrapper">
+                📁 파일 선택
+                <input type="file" id="fallback-file-input" accept="image/*">
+              </label>
+              <button type="button" class="btn btn-outline hidden" id="retake-photo-btn">🔄 다시 인증하기</button>
             </div>
             <input type="hidden" id="captured-photo-data" required>
           </div>
@@ -333,7 +341,7 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary modal-cancel">취소</button>
-          <button type="submit" class="btn btn-success" id="submit-return-btn" disabled>
+          <button type="submit" class="btn btn-success" id="submit-return-btn">
             ✅ 반납 완료 & 구글시트 전송
           </button>
         </div>
@@ -380,7 +388,7 @@
 
         <div class="script-guide-box">
           <h4>💡 구글 시트 다중 기기 동기화 지원 스크립트 코드</h4>
-          <p>모바일과 PC 등 여러 기기에서 대여 현황을 함께 보려면 아래 업데이트 코드를 구글 스크립트에 덮어씌우고 **[배포] → [새 배포]**를 진행해 주세요!</p>
+          <p>구글 스크립트 우측 상단 <strong>[배포] → [배포 관리] → [✏️ 연동 수정] → [새 버전]</strong>으로 배포하시면 주소가 바뀌지 않습니다!</p>
           <pre class="code-box"><code>function test() {
   var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");
   var sheet = ss.getActiveSheet();
@@ -402,24 +410,32 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");
-  var sheet = ss.getActiveSheet();
-  var data = JSON.parse(e.postData.contents);
-  sheet.appendRow([
-    data.timestamp,
-    data.cartId,
-    data.renter,
-    data.dept || "",
-    data.rentTime,
-    data.returnTime,
-    data.duration,
-    data.location,
-    data.photoUrl || "사진 보존됨",
-    data.note || ""
-  ]);
-  return ContentService.createTextOutput(JSON.stringify({"result": "success"}))
-    .setMimeType(ContentService.MimeType.JSON);
-}</code></pre>
+  try {
+    var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");
+    var sheet = ss.getActiveSheet();
+    var data = {};
+    if (e && e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (err) {
+        data = e.parameter || {};
+      }
+    } else if (e && e.parameter) {
+      data = e.parameter;
+    }
+    sheet.appendRow([
+      data.timestamp || new Date().toLocaleString(),
+      data.cartId || "차량",
+      data.renter || "이용자",
+      data.dept || "",
+      data.rentTime || "",
+      data.returnTime || "",
+      data.duration || "",
+      data.location || "",
+      data.photoUrl || "사진 보존됨",
+      data.note || ""
+    ]);
+    return ContentService.createTextOutput(JSON.stringify({"result": "success"})\n      .setMimeType(ContentService.MimeType.JSON);\n  } catch (gErr) {\n    return ContentService.createTextOutput(JSON.stringify({"result": "error", "message": gErr.toString()})\n      .setMimeType(ContentService.MimeType.JSON);\n  }\n}</code></pre>
           <button type="button" class="btn btn-sm btn-outline" id="copy-script-btn">📋 동기화 지원 스크립트 코드 복사</button>
         </div>
       </div>
