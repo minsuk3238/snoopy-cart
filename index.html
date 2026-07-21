@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스누피가든 카트 & 버스 스마트 대여 / 반납 인증 시스템</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- 헤더 / 내비게이션 -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-badge">🐾 Snoopy Garden</div>
+        <h1 class="brand-title">스마트 차량 & 카트 대여 센터</h1>
+      </div>
+      <nav class="nav-tabs">
+        <button class="nav-btn active" data-tab="dashboard-tab">
+          <span class="icon">🚗</span> 차량/카트 현황
+        </button>
+        <button class="nav-btn" data-tab="sheets-tab">
+          <span class="icon">📊</span> 구글시트형 로그
+        </button>
+        <button class="nav-btn" data-tab="archive-tab">
+          <span class="icon">🖼️</span> 반납 사진 아카이브
+        </button>
+        <button class="nav-btn profile-btn" id="open-profile-btn">
+          <span class="icon">👤</span> <span id="header-profile-label">내 프로필 설정</span>
+        </button>
+        <a id="direct-google-sheet-btn" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="nav-btn sheet-link-btn">
+          <span class="icon">🟢</span> 구글 시트 바로가기
+        </a>
+        <button class="nav-btn settings-btn" id="open-settings-btn">
+          <span class="icon">🔗</span> 연동 설정
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="app-container">
+    <!-- 대시보드 탭 -->
+    <section id="dashboard-tab" class="tab-content active">
+      <!-- 내 프로필 퀵 카드 -->
+      <div class="profile-bar" id="profile-summary-bar">
+        <div class="profile-bar-info">
+          <span class="profile-avatar-icon">👤</span>
+          <div>
+            <div class="profile-bar-title" id="profile-bar-name">담당자 정보가 등록되지 않았습니다.</div>
+            <div class="profile-bar-sub" id="profile-bar-dept">클릭하여 [이름 / 부서 / 연락처]를 등록하면 대여 시 자동 입력됩니다.</div>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-outline" id="quick-edit-profile-btn">✏️ 프로필 등록 / 수정</button>
+      </div>
+
+      <!-- 주요 현황 요약 카드 -->
+      <div class="summary-cards">
+        <div class="summary-card total">
+          <div class="card-icon">🛺</div>
+          <div class="card-info">
+            <span class="label">전체 보유 차량</span>
+            <span class="value" id="stat-total">5대</span>
+          </div>
+        </div>
+        <div class="summary-card available">
+          <div class="card-icon">✅</div>
+          <div class="card-info">
+            <span class="label">대여 가능</span>
+            <span class="value" id="stat-available">0대</span>
+          </div>
+        </div>
+        <div class="summary-card in-use">
+          <div class="card-icon">⏱️</div>
+          <div class="card-info">
+            <span class="label">사용 중</span>
+            <span class="value" id="stat-in-use">0대</span>
+          </div>
+        </div>
+        <div class="summary-card returned">
+          <div class="card-icon">📸</div>
+          <div class="card-info">
+            <span class="label">오늘 반납 완료</span>
+            <span class="value" id="stat-returned">0건</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 실시간 다중 기기 상태 동기화 배너 -->
+      <div class="sync-banner" id="sync-status-banner">
+        <div class="banner-content">
+          <span class="status-indicator offline" id="banner-status-indicator">●</span>
+          <span id="banner-text">구글 시트 연동 상태 확인 중...</span>
+        </div>
+        <div class="banner-actions">
+          <button class="btn btn-sm btn-outline" id="manual-sync-btn">🔄 실시간 상태 동기화</button>
+          <a id="banner-sheet-direct-link" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="btn btn-sm btn-success">
+            🟢 내 구글 시트 열기
+          </a>
+          <button class="btn btn-sm btn-outline" id="banner-setup-btn">연동 설정</button>
+        </div>
+      </div>
+
+      <!-- 카트 & 차량 그리드 섹션 -->
+      <div class="section-header toolbar">
+        <div>
+          <h2>스누피가든 보유 차량 목록 (총 5대)</h2>
+          <span class="section-sub">모바일/PC 동시 접속 시 실시간으로 대여 및 반납 상태가 동기화됩니다.</span>
+        </div>
+        <button class="btn btn-sm btn-outline" id="refresh-grid-btn">🔄 현황 새로고침</button>
+      </div>
+      <div class="cart-grid" id="cart-grid-container">
+        <!-- JS dynamic rendering -->
+      </div>
+    </section>
+
+    <!-- 구글시트형 로그 탭 -->
+    <section id="sheets-tab" class="tab-content">
+      <div class="section-header toolbar">
+        <div>
+          <h2>구글 시트형 대여/반납 이력 로그</h2>
+          <span class="section-sub">대여 타임스탬프, 반납 시각, 이용인 및 부서, 반납 현장 사진 기록이 실시간 누적됩니다.</span>
+        </div>
+        <div class="toolbar-actions">
+          <input type="text" id="log-search-input" class="form-control" placeholder="차량명, 대여인, 부서 검색...">
+          <a id="sheet-tab-direct-link" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="btn btn-primary">
+            🟢 구글 시트 직접 열기
+          </a>
+          <button class="btn btn-success" id="export-csv-btn">
+            📥 Excel / CSV 다운로드
+          </button>
+        </div>
+      </div>
+
+      <!-- 구글 시트 스타일 테이블 -->
+      <div class="sheet-table-wrapper">
+        <table class="sheet-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>타임스탬프 (기록시각)</th>
+              <th>차량 ID / 이름</th>
+              <th>대여인</th>
+              <th>소속 부서</th>
+              <th>대여 시각</th>
+              <th>반납 시각</th>
+              <th>이용 시간</th>
+              <th>반납 장소</th>
+              <th>반납 인증 사진</th>
+              <th>상태</th>
+              <th>구글시트 전송</th>
+            </tr>
+          </thead>
+          <tbody id="sheet-log-tbody">
+            <!-- JS dynamic rendering -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 반납 사진 아카이브 탭 -->
+    <section id="archive-tab" class="tab-content">
+      <div class="section-header toolbar">
+        <div>
+          <h2>반납 사진 아카이브 갤러리</h2>
+          <span class="section-sub">차량 반납 시 현장에서 라이브 촬영된 사진 모음 및 타임스탬프 보관소</span>
+        </div>
+        <div class="toolbar-actions">
+          <select id="archive-cart-filter" class="form-control">
+            <option value="ALL">전체 차량 보기</option>
+            <option value="CART-01">1호 카트 (2인승)</option>
+            <option value="CART-03">3호 카트 (4인승)</option>
+            <option value="LABO-01">라보 (작업차량)</option>
+            <option value="BUS-SNOOPY">스누피 버스</option>
+            <option value="BUS-BELLE">벨 버스</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="archive-grid" id="archive-gallery-container">
+        <!-- JS dynamic rendering -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== 모달창 모음 ==================== -->
+
+  <!-- 0. 사용자 프로필 설정 모달 -->
+  <div class="modal-overlay" id="profile-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>👤 내 프로필 설정 (자동 대여 정보)</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="profile-form">
+        <div class="modal-body">
+          <p class="desc-text" style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9rem;">
+            내 정보를 한 번 등록해두면 차량 대여 시 <strong>이름, 부서, 연락처가 자동으로 입력</strong>됩니다.
+          </p>
+          <div class="form-group">
+            <label for="profile-name">이름 *</label>
+            <input type="text" id="profile-name" class="form-control" placeholder="예: 홍길동" required>
+          </div>
+          <div class="form-group">
+            <label for="profile-dept">소속 부서 *</label>
+            <input type="text" id="profile-dept" class="form-control" placeholder="예: 가든운영팀 / 시설관리팀" required>
+          </div>
+          <div class="form-group">
+            <label for="profile-phone">연락처 *</label>
+            <input type="tel" id="profile-phone" class="form-control" placeholder="예: 010-1234-5678" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel">취소</button>
+          <button type="submit" class="btn btn-primary">💾 프로필 저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 1. 대여하기 모달 -->
+  <div class="modal-overlay" id="rent-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="rent-modal-title">🚗 차량 대여하기</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="rent-form">
+        <input type="hidden" id="rent-cart-id">
+        <div class="auto-filled-notice" id="auto-filled-notice">
+          ✨ 저장된 프로필 정보로 자동 입력되었습니다.
+        </div>
+        <div class="form-group">
+          <label for="renter-name">대여 이용자 성함 *</label>
+          <input type="text" id="renter-name" class="form-control" placeholder="예: 홍길동" required>
+        </div>
+        <div class="form-group">
+          <label for="renter-dept">소속 부서 *</label>
+          <input type="text" id="renter-dept" class="form-control" placeholder="예: 가든운영팀" required>
+        </div>
+        <div class="form-group">
+          <label for="renter-phone">연락처 *</label>
+          <input type="tel" id="renter-phone" class="form-control" placeholder="예: 010-1234-5678" required>
+        </div>
+        <div class="form-group">
+          <label for="rent-note">대여 특이사항 / 업무 메모</label>
+          <input type="text" id="rent-note" class="form-control" placeholder="예: 야외 가든 자재 운반 업무">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel">취소</button>
+          <button type="submit" class="btn btn-primary">🚀 대여 시작 (타임스탬프 기록)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. 반납하기 & 실시간 카메라 인증 모달 (정식 프로덕션 전용) -->
+  <div class="modal-overlay" id="return-modal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3 id="return-modal-title">📸 차량 반납 & 현장 카메라 인증</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="return-form">
+        <input type="hidden" id="return-cart-id">
+        
+        <div class="return-grid">
+          <!-- 왼쪽: 정보 및 반납 장소 선택 -->
+          <div class="return-info-side">
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">대여인</span>
+                <span class="info-val" id="return-display-renter">-</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">소속 부서</span>
+                <span class="info-val" id="return-display-dept">-</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">대여 시작시각</span>
+                <span class="info-val" id="return-display-renttime">-</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">현재 경과시간</span>
+                <span class="info-val highlight" id="return-display-duration">0분</span>
+              </div>
+            </div>
+
+            <!-- 반납 장소 드롭다운 + 기타 주관식 입력 -->
+            <div class="form-group margin-top">
+              <label for="return-location-select">반납 장소 선택 *</label>
+              <select id="return-location-select" class="form-control" required>
+                <option value="카트주차장">카트주차장</option>
+                <option value="3주차장">3주차장</option>
+                <option value="후박나무">후박나무</option>
+                <option value="소설왕스누피광장">소설왕스누피광장</option>
+                <option value="CUSTOM">기타 (직접 입력)</option>
+              </select>
+              <input type="text" id="return-location-custom" class="form-control hidden margin-top" placeholder="반납 장소를 직접 입력하세요 (예: 숲속 카페 앞)">
+            </div>
+
+            <div class="form-group">
+              <label for="return-note">반납 메모 / 상태 점검</label>
+              <input type="text" id="return-note" class="form-control" placeholder="예: 주차 완료, 차량 상태 이상 없음">
+            </div>
+          </div>
+
+          <!-- 오른쪽: 현장 실시간 카메라 촬영 전용 -->
+          <div class="return-photo-side">
+            <label class="photo-title">반납 현장 실시간 카메라 촬영 *</label>
+            <div class="camera-notice-badge">⚡ 부정 반납 방지를 위해 당시 촬영한 캡처 사진만 가능합니다.</div>
+            
+            <div class="camera-wrapper">
+              <video id="webcam-preview" autoplay playsinline class="hidden"></video>
+              <canvas id="photo-canvas" class="hidden"></canvas>
+              <img id="photo-preview-img" src="" alt="반납 현장 촬영 사진" class="hidden">
+
+              <div id="camera-placeholder" class="camera-placeholder">
+                <div class="placeholder-icon">📷</div>
+                <p>버튼을 눌러 실시간 카메라를 켜주세요.</p>
+              </div>
+            </div>
+
+            <div class="camera-controls">
+              <button type="button" class="btn btn-primary" id="start-webcam-btn">📷 카메라 켜기</button>
+              <button type="button" class="btn btn-accent hidden" id="capture-photo-btn">⚡ 현장 사진 촬영하기</button>
+              <button type="button" class="btn btn-outline hidden" id="retake-photo-btn">🔄 다시 촬영하기</button>
+            </div>
+            <input type="hidden" id="captured-photo-data" required>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel">취소</button>
+          <button type="submit" class="btn btn-success" id="submit-return-btn" disabled>
+            ✅ 반납 완료 & 구글시트 전송
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. 사진 원본 대형 미리보기 모달 -->
+  <div class="modal-overlay" id="photo-view-modal">
+    <div class="modal-card modal-md">
+      <div class="modal-header">
+        <h3 id="photo-view-title">반납 현장 촬영 사진 원본</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="photo-view-img" src="" alt="반납 인증 원본 사진" style="width: 100%; max-height: 500px; object-fit: contain; border-radius: 8px;">
+        <div class="photo-meta-info" id="photo-view-meta" style="margin-top: 15px; text-align: left; background: #f8fafc; padding: 12px; border-radius: 8px;"></div>
+      </div>
+      <div class="modal-footer">
+        <a id="photo-download-link" download="snoopy-vehicle-return.jpg" class="btn btn-primary">📥 사진 다운로드</a>
+        <button type="button" class="btn btn-secondary modal-cancel">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 구글 앱스 스크립트(Google Apps Script) 연동 설정 모달 -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3>🔗 구글 시트 연동 설정 & 다중 기기 실시간 동기화</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="gas-sheet-url">내 구글 시트 문서 주소 (직접 열기용)</label>
+          <input type="url" id="gas-sheet-url" class="form-control" value="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0">
+        </div>
+
+        <div class="form-group">
+          <label for="gas-webhook-url">Google Apps Script Webhook URL (데이터 실시간 전송용)</label>
+          <input type="url" id="gas-webhook-url" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
+          <span class="help-text">설정해두면 휴대폰/PC 등 모든 기기에서 대여/반납 현황이 실시간 공유됩니다.</span>
+        </div>
+
+        <div class="script-guide-box">
+          <h4>💡 구글 시트 다중 기기 동기화 지원 스크립트 코드</h4>
+          <p>모바일과 PC 등 여러 기기에서 대여 현황을 함께 보려면 아래 업데이트 코드를 구글 스크립트에 덮어씌우고 **[배포] → [새 배포]**를 진행해 주세요!</p>
+          <pre class="code-box"><code>function test() {
+  var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");
+  var sheet = ss.getActiveSheet();
+  sheet.appendRow([new Date(), "1호 카트", "테스터", "가든운영팀", "12:00", "12:30", "30분", "카트주차장", "현장사진", "정식 운영 테스트"]);
+}
+
+function doGet(e) {
+  var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");
+  var sheet = ss.getActiveSheet();
+  
+  if (e && e.parameter && e.parameter.action === "getStatus") {
+    var data = sheet.getDataRange().getValues();
+    return ContentService.createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  return ContentService.createTextOutput("✅ 스누피가든 스마트 차량 대여 웹훅 서비스가 정상 구동 중입니다.")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+function doPost(e) {
+  var ss = SpreadsheetApp.openById("1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc");
+  var sheet = ss.getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  sheet.appendRow([
+    data.timestamp,
+    data.cartId,
+    data.renter,
+    data.dept || "",
+    data.rentTime,
+    data.returnTime,
+    data.duration,
+    data.location,
+    data.photoUrl || "사진 보존됨",
+    data.note || ""
+  ]);
+  return ContentService.createTextOutput(JSON.stringify({"result": "success"}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</code></pre>
+          <button type="button" class="btn btn-sm btn-outline" id="copy-script-btn">📋 동기화 지원 스크립트 코드 복사</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel">취소</button>
+        <button type="button" class="btn btn-primary" id="save-settings-btn">💾 설정 저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
