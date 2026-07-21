@@ -1,5 +1,5 @@
 /**
- * Snoopy Garden Smart Vehicle & Cart Rental System - Instant Smooth Rental (app.js)
+ * Snoopy Garden Smart Vehicle & Cart Rental System - Robust Mobile Vehicles & Bus Sync (app.js)
  */
 
 // User Specified Vehicle List (Total 5 Vehicles)
@@ -107,7 +107,12 @@ function loadStorageData() {
   }
 
   const savedWebhook = localStorage.getItem('snoopy_webhook_url');
-  webhookUrl = savedWebhook ? savedWebhook : DEFAULT_WEBHOOK_URL;
+  if (savedWebhook && savedWebhook.trim().startsWith('https://script.google.com')) {
+    webhookUrl = savedWebhook.trim();
+  } else {
+    webhookUrl = DEFAULT_WEBHOOK_URL;
+    localStorage.setItem('snoopy_webhook_url', DEFAULT_WEBHOOK_URL);
+  }
 
   const savedSheetUrl = localStorage.getItem('snoopy_sheet_view_url');
   sheetViewUrl = savedSheetUrl ? savedSheetUrl : DEFAULT_SHEET_VIEW_URL;
@@ -342,9 +347,20 @@ function startCloudSyncLoop() {
   }, 3000);
 }
 
+// Ultra Robust Helper for matching raw Cart/Bus names from Google Sheet
+function matchCartId(rawName) {
+  const s = String(rawName || '').toUpperCase();
+  if (s.includes('1호') || s.includes('CART-01')) return 'CART-01';
+  if (s.includes('3호') || s.includes('CART-03')) return 'CART-03';
+  if (s.includes('라보') || s.includes('LABO')) return 'LABO-01';
+  if (s.includes('스누피') || s.includes('SNOOPY')) return 'BUS-SNOOPY';
+  if (s.includes('벨') || s.includes('BELLE')) return 'BUS-BELLE';
+  return null;
+}
+
 // Ultra Mobile Safari / Chrome Friendly JSONP & Fetch Cloud Sync
 function fetchCloudCartStatus(showToast = false) {
-  const targetUrl = webhookUrl || DEFAULT_WEBHOOK_URL;
+  const targetUrl = (webhookUrl && webhookUrl.startsWith('https://script.google.com')) ? webhookUrl : DEFAULT_WEBHOOK_URL;
   if (!targetUrl) return;
 
   const callbackName = 'gasCallback_' + Date.now();
@@ -366,12 +382,7 @@ function fetchCloudCartStatus(showToast = false) {
       const rentTimeStr = String(r[4] || '');
       const returnTimeStr = String(r[5] || '');
 
-      let matchedCartId = null;
-      if (rawCartName.includes('1호') || rawCartName.includes('1호 카트') || rawCartName.includes('CART-01')) matchedCartId = 'CART-01';
-      else if (rawCartName.includes('3호') || rawCartName.includes('3호 카트') || rawCartName.includes('CART-03')) matchedCartId = 'CART-03';
-      else if (rawCartName.includes('라보') || rawCartName.includes('LABO-01')) matchedCartId = 'LABO-01';
-      else if (rawCartName.includes('스누피 버스') || rawCartName.includes('BUS-SNOOPY')) matchedCartId = 'BUS-SNOOPY';
-      else if (rawCartName.includes('벨 버스') || rawCartName.includes('BUS-BELLE')) matchedCartId = 'BUS-BELLE';
+      const matchedCartId = matchCartId(rawCartName);
 
       if (matchedCartId && !cloudStatusMap[matchedCartId]) {
         const isCurrentlyInUse = returnTimeStr.includes('대여 중') || returnTimeStr === '' || returnTimeStr === '-';
@@ -875,7 +886,7 @@ function handleReturnSubmit(e) {
 
 // Ultra-robust Google Apps Script Webhook sender with fallback
 function sendToGoogleSheet(logData) {
-  const targetUrl = webhookUrl || DEFAULT_WEBHOOK_URL;
+  const targetUrl = (webhookUrl && webhookUrl.startsWith('https://script.google.com')) ? webhookUrl : DEFAULT_WEBHOOK_URL;
   if (!targetUrl) return;
 
   const payload = JSON.stringify({
@@ -891,20 +902,23 @@ function sendToGoogleSheet(logData) {
     note: logData.note || ''
   });
 
-  fetch(targetUrl, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: payload
-  })
-  .then(() => {
-    logData.gasSynced = true;
-    saveLogs();
-    renderSheetLogs();
-  })
-  .catch(err => {
-    console.error('GAS Webhook Error:', err);
-  });
+  try {
+    fetch(targetUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: payload
+    })
+    .then(() => {
+      logData.gasSynced = true;
+      saveLogs();
+      renderSheetLogs();
+    })
+    .catch(err => {
+      console.error('GAS Webhook Error:', err);
+    });
+  } catch(e) {
+    console.error('GAS POST exception:', e);
+  }
 }
 
 // Render Google Sheets Style Log Table
@@ -1071,5 +1085,5 @@ function updateStats() {
   statTotal.textContent = `${total}대`;
   statAvailable.textContent = `${available}대`;
   statInUse.textContent = `${inUse}대`;
-  statReturned.textContent = `${returnedCount}건`;
+  statReturned.textContent = `${returnedCount}cmd`;
 }
