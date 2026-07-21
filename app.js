@@ -1,5 +1,5 @@
 /**
- * Snoopy Garden Smart Vehicle & Cart Rental System - Perfect Realtime Cloud Sync (app.js)
+ * Snoopy Garden Smart Vehicle & Cart Rental System - Robust Webhook POST (app.js)
  */
 
 // User Specified Vehicle List (Total 5 Vehicles)
@@ -141,7 +141,7 @@ function updateProfileUI() {
 function updateSyncBannerStatus() {
   if (webhookUrl) {
     bannerStatusIndicator.className = 'status-indicator online';
-    bannerText.textContent = `구글 시트 연동 활성화됨 (모바일 & PC 다중 기기 실시간 동기화 구동 중)`;
+    bannerText.textContent = `구글 시트 연동 활성화됨 (모바일 & PC 다중 기기 실시간 동기화 지원)`;
   } else {
     bannerStatusIndicator.className = 'status-indicator offline';
     bannerText.textContent = '구글 시트 연동이 설정되지 않았습니다.';
@@ -165,7 +165,6 @@ function setupNavigation() {
 
 // Global Event Listeners
 function setupEventListeners() {
-  // Open Settings & Profile Modal
   document.getElementById('open-settings-btn').addEventListener('click', () => openModal('settings-modal'));
   document.getElementById('banner-setup-btn').addEventListener('click', () => openModal('settings-modal'));
   
@@ -306,7 +305,10 @@ function startCloudSyncLoop() {
 }
 
 function fetchCloudCartStatus(showToast = false) {
-  if (!webhookUrl) return;
+  if (!webhookUrl) {
+    if (showToast) alert('연동 설정에서 Webhook URL을 확인해 주세요.');
+    return;
+  }
 
   fetch(`${webhookUrl}?action=getStatus`)
     .then(res => res.text())
@@ -316,17 +318,20 @@ function fetchCloudCartStatus(showToast = false) {
         rows = JSON.parse(text);
       } catch (e) {
         if (showToast) {
-          alert('구글 스크립트를 최신 [새 배포]로 업데이트해 주세요!');
+          alert('구글 앱스 스크립트에서 [배포] -> [새 배포]를 한 번 더 눌러주세요!');
         }
         return;
       }
 
-      if (!Array.isArray(rows) || rows.length <= 1) return;
+      if (!Array.isArray(rows)) return;
 
       const cloudStatusMap = {};
-      // Iterate backwards from the LATEST row at the bottom of Google Sheets
+      const parseSummary = [];
+
       for (let i = rows.length - 1; i >= 1; i--) {
         const r = rows[i];
+        if (!r || r.length < 2) continue;
+
         const rawCartName = String(r[1] || '');
         const renter = String(r[2] || '');
         const dept = String(r[3] || '');
@@ -334,14 +339,13 @@ function fetchCloudCartStatus(showToast = false) {
         const returnTimeStr = String(r[5] || '');
 
         let matchedCartId = null;
-        if (rawCartName.includes('1호 카트') || rawCartName.includes('CART-01')) matchedCartId = 'CART-01';
-        else if (rawCartName.includes('3호 카트') || rawCartName.includes('CART-03')) matchedCartId = 'CART-03';
+        if (rawCartName.includes('1호') || rawCartName.includes('1호 카트') || rawCartName.includes('CART-01')) matchedCartId = 'CART-01';
+        else if (rawCartName.includes('3호') || rawCartName.includes('3호 카트') || rawCartName.includes('CART-03')) matchedCartId = 'CART-03';
         else if (rawCartName.includes('라보') || rawCartName.includes('LABO-01')) matchedCartId = 'LABO-01';
         else if (rawCartName.includes('스누피 버스') || rawCartName.includes('BUS-SNOOPY')) matchedCartId = 'BUS-SNOOPY';
         else if (rawCartName.includes('벨 버스') || rawCartName.includes('BUS-BELLE')) matchedCartId = 'BUS-BELLE';
 
         if (matchedCartId && !cloudStatusMap[matchedCartId]) {
-          // This is the LATEST recorded status row for this vehicle!
           const isCurrentlyInUse = returnTimeStr.includes('대여 중') || returnTimeStr === '' || returnTimeStr === '-';
           cloudStatusMap[matchedCartId] = {
             inUse: isCurrentlyInUse,
@@ -349,6 +353,7 @@ function fetchCloudCartStatus(showToast = false) {
             dept: dept,
             rentTimeStr: rentTimeStr
           };
+          parseSummary.push(`${matchedCartId}: ${isCurrentlyInUse ? '대여중(' + renter + ')' : '대기중'}`);
         }
       }
 
@@ -381,11 +386,17 @@ function fetchCloudCartStatus(showToast = false) {
       }
 
       if (showToast) {
-        alert('🔄 다중 기기 실시간 상태 동기화가 완료되었습니다!');
+        if (parseSummary.length === 0) {
+          alert('구글 시트 수신 완료 (총 ' + rows.length + '행 데이터 존재).');
+        } else {
+          alert('🔄 구글 시트 수신 완료!\n\n[구글 시트 기준 상태]\n' + parseSummary.join('\n'));
+        }
       }
     })
     .catch(err => {
-      console.error('Cloud Sync error:', err);
+      if (showToast) {
+        alert('구글 시트 수신 실패: ' + err.message);
+      }
     });
 }
 
@@ -505,7 +516,6 @@ window.openRentModal = function(cartId) {
 
   const autoNotice = document.getElementById('auto-filled-notice');
 
-  // Auto pre-fill from user profile
   if (userProfile.name) {
     document.getElementById('renter-name').value = userProfile.name;
     document.getElementById('renter-dept').value = userProfile.dept || '';
@@ -534,7 +544,6 @@ function handleRentSubmit(e) {
   const cart = carts.find(c => c.id === cartId);
   if (!cart) return;
 
-  // Save profile automatically if first time
   if (!userProfile.name) {
     userProfile.name = renterName;
     userProfile.dept = renterDept;
@@ -552,7 +561,6 @@ function handleRentSubmit(e) {
   cart.rentTime = nowMs;
   cart.rentTimeStr = rentTimeStr;
 
-  // Record initial log
   const logEntry = {
     id: 'LOG-' + nowMs,
     timestamp: rentTimeStr,
@@ -580,10 +588,8 @@ function handleRentSubmit(e) {
   updateStats();
   closeModal('rent-modal');
 
-  // Trigger optional Webhook
-  if (webhookUrl) {
-    sendToGoogleSheet(logEntry);
-  }
+  // Send to Google Sheet
+  sendToGoogleSheet(logEntry);
 }
 
 // Return Modal Logic
@@ -599,20 +605,18 @@ window.openReturnModal = function(cartId) {
   document.getElementById('return-display-duration').textContent = calculateDuration(cart.rentTime);
   document.getElementById('return-note').value = '';
   
-  // Reset location inputs
   returnLocationSelect.value = '카트주차장';
   returnLocationCustom.value = '';
   returnLocationCustom.classList.add('hidden');
   returnLocationCustom.required = false;
 
-  // Reset photo state and start camera automatically
   resetPhotoPreview();
   startWebcam();
 
   openModal('return-modal');
 };
 
-// Live Camera & Photo logic (Production Mode)
+// Live Camera & Photo logic
 function resetPhotoPreview() {
   document.getElementById('webcam-preview').classList.add('hidden');
   document.getElementById('photo-canvas').classList.add('hidden');
@@ -688,7 +692,6 @@ function handleReturnSubmit(e) {
   e.preventDefault();
   const cartId = document.getElementById('return-cart-id').value;
   
-  // Resolve Location: Check if CUSTOM is selected
   let finalLocation = returnLocationSelect.value;
   if (finalLocation === 'CUSTOM') {
     finalLocation = returnLocationCustom.value.trim() || '기타 장소';
@@ -709,7 +712,6 @@ function handleReturnSubmit(e) {
   const returnTimeStr = formatTimestamp(new Date(returnTimeMs));
   const durationStr = calculateDuration(cart.rentTime);
 
-  // Update Cart Status
   const renterName = cart.currentRenter;
   const renterDept = cart.currentDept;
   const rentTimeStr = cart.rentTimeStr;
@@ -721,7 +723,6 @@ function handleReturnSubmit(e) {
   cart.rentTimeStr = null;
   cart.phone = null;
 
-  // Find or create active log entry
   let activeLog = logs.find(l => l.cartId === cartId && l.status === '사용 중');
   if (!activeLog) {
     activeLog = {
@@ -752,17 +753,18 @@ function handleReturnSubmit(e) {
   updateStats();
   closeModal('return-modal');
 
-  // Trigger optional Webhook
-  if (webhookUrl) {
-    sendToGoogleSheet(activeLog);
-  }
+  // Send to Google Sheet
+  sendToGoogleSheet(activeLog);
 
   alert(`✅ [${cart.name}] 현장 반납 및 사진 인증이 완벽하게 완료되었습니다!`);
 }
 
-// Google Apps Script Webhook sender
+// Google Apps Script Webhook sender with fallback
 function sendToGoogleSheet(logData) {
-  fetch(webhookUrl, {
+  const targetUrl = webhookUrl || DEFAULT_WEBHOOK_URL;
+  if (!targetUrl) return;
+
+  fetch(targetUrl, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
@@ -851,7 +853,7 @@ function exportLogsToCSV() {
     return;
   }
 
-  let csvContent = '\uFEFF'; // UTF-8 BOM for Excel Korean support
+  let csvContent = '\uFEFF';
   csvContent += '기록시각,차량명,대여인,소속부서,대여시각,반납시각,이용시간,반납장소,상태,비고\n';
 
   logs.forEach(l => {
