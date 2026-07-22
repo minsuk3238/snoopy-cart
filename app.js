@@ -418,19 +418,7 @@ function setupEventListeners() {
     startWebcamBtn.addEventListener('click', startWebcam);
   }
   
-  const fileInput = document.getElementById('fallback-file-input');
-  if (fileInput) {
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          setCapturedPhoto(evt.target.result);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
+
 
   const retakeBtn = document.getElementById('retake-photo-btn');
   if (retakeBtn) {
