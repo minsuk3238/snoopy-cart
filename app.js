@@ -413,10 +413,25 @@ function setupEventListeners() {
   document.getElementById('rent-form').addEventListener('submit', handleRentSubmit);
   document.getElementById('return-form').addEventListener('submit', handleReturnSubmit);
 
-  document.getElementById('start-webcam-btn').addEventListener('click', startWebcam);
-  document.getElementById('capture-photo-btn').addEventListener('click', captureWebcamPhoto);
-  document.getElementById('bypass-photo-btn').addEventListener('click', attachPresetPhoto);
+  const startWebcamBtn = document.getElementById('start-webcam-btn');
+  if (startWebcamBtn) {
+    startWebcamBtn.addEventListener('click', startWebcam);
+  }
   
+  const fileInput = document.getElementById('fallback-file-input');
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          setCapturedPhoto(evt.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
   const retakeBtn = document.getElementById('retake-photo-btn');
   if (retakeBtn) {
     retakeBtn.addEventListener('click', () => {
@@ -487,6 +502,19 @@ function matchCartId(rawName) {
   if (s.includes('스누피') || s.includes('SNOOPY')) return 'BUS-SNOOPY';
   if (s.includes('벨') || s.includes('BELLE')) return 'BUS-BELLE';
   return null;
+}
+
+// Convert Google Drive view URL to direct embed image URL for <img> tags
+function getGoogleDriveDirectImageUrl(url) {
+  if (!url) return '';
+  if (url.includes('drive.google.com/file/d/')) {
+    const parts = url.split('drive.google.com/file/d/');
+    if (parts.length > 1) {
+      const fileId = parts[1].split('/')[0];
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+  }
+  return url;
 }
 
 // Preset Photo Creator for Cloud Synced Logs
@@ -569,10 +597,17 @@ function fetchCloudCartStatus(showToast = false) {
       // Reconstruct Log Entry for Table & Archive Gallery on ALL devices!
       const isReturned = !isCurrentlyInUse;
       
-      // Use photoText if it contains base64 image data, otherwise fallback to preset template
-      const resolvedPhotoData = isReturned 
-        ? (photoText.startsWith('data:image/') ? photoText : createPresetReturnPhoto(rawCartName, renter, returnTimeStr)) 
-        : null;
+      // Use photoText if it contains base64 image data or Google Drive URL, otherwise fallback to preset template
+      let resolvedPhotoData = null;
+      if (isReturned) {
+        if (photoText.startsWith('data:image/')) {
+          resolvedPhotoData = photoText;
+        } else if (photoText.includes('drive.google.com/')) {
+          resolvedPhotoData = getGoogleDriveDirectImageUrl(photoText);
+        } else {
+          resolvedPhotoData = createPresetReturnPhoto(rawCartName, renter, returnTimeStr);
+        }
+      }
 
       cloudLogs.push({
         id: 'GAS-' + i + '-' + timestampStr,
@@ -695,7 +730,6 @@ function renderCarts() {
           <div class="cart-avatar">${cart.icon || '🚗'}</div>
           <div>
             <div class="cart-name">${cart.name}</div>
-            <div class="cart-model">${cart.model}</div>
           </div>
         </div>
         <span class="badge ${isAvailable ? 'badge-available' : 'badge-in-use'}">
@@ -941,15 +975,20 @@ function resetPhotoPreview() {
   document.getElementById('webcam-preview').classList.add('hidden');
   document.getElementById('photo-canvas').classList.add('hidden');
   document.getElementById('photo-preview-img').classList.add('hidden');
-  document.getElementById('camera-placeholder').classList.remove('hidden');
-  document.getElementById('capture-photo-btn').classList.add('hidden');
+  
+  const placeholder = document.getElementById('camera-placeholder');
+  if (placeholder) {
+    placeholder.classList.remove('hidden');
+    document.getElementById('placeholder-status-text').textContent = '카메라가 시작되는 중...';
+  }
   
   const retakeBtn = document.getElementById('retake-photo-btn');
   if (retakeBtn) retakeBtn.classList.add('hidden');
 
-  document.getElementById('start-webcam-btn').classList.remove('hidden');
+  const startBtn = document.getElementById('start-webcam-btn');
+  if (startBtn) startBtn.classList.add('hidden');
+
   document.getElementById('captured-photo-data').value = '';
-  document.getElementById('submit-return-btn').disabled = false;
 }
 
 function startWebcam() {
@@ -957,7 +996,10 @@ function startWebcam() {
   resetPhotoPreview();
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    attachPresetPhoto();
+    document.getElementById('camera-placeholder').classList.remove('hidden');
+    document.getElementById('placeholder-status-text').textContent = '⚠️ 이 브라우저는 카메라를 지원하지 않습니다. 아래 [사진 업로드] 버튼을 이용해 주세요.';
+    const startBtn = document.getElementById('start-webcam-btn');
+    if (startBtn) startBtn.classList.add('hidden');
     return;
   }
 
@@ -967,12 +1009,15 @@ function startWebcam() {
       video.srcObject = stream;
       video.classList.remove('hidden');
       document.getElementById('camera-placeholder').classList.add('hidden');
-      document.getElementById('start-webcam-btn').classList.add('hidden');
-      document.getElementById('capture-photo-btn').classList.remove('hidden');
+      const startBtn = document.getElementById('start-webcam-btn');
+      if (startBtn) startBtn.classList.add('hidden');
     })
     .catch(err => {
-      console.warn('Camera access error, fallback activated:', err);
-      attachPresetPhoto();
+      console.warn('Camera access error:', err);
+      document.getElementById('camera-placeholder').classList.remove('hidden');
+      document.getElementById('placeholder-status-text').textContent = '⚠️ 카메라를 시작하지 못했습니다. 아래 [사진 업로드] 버튼으로 현장 사진을 업로드해 주세요.';
+      const startBtn = document.getElementById('start-webcam-btn');
+      if (startBtn) startBtn.classList.remove('hidden');
     });
 }
 
@@ -983,58 +1028,10 @@ function stopWebcam() {
   }
 }
 
-function captureWebcamPhoto() {
-  const video = document.getElementById('webcam-preview');
-  const canvas = document.getElementById('photo-canvas');
-  const context = canvas.getContext('2d');
-
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
-  context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-  setCapturedPhoto(dataUrl);
-  stopWebcam();
-}
-
-function attachPresetPhoto() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 600;
-  canvas.height = 400;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#2D6A4F';
-  ctx.fillRect(0, 0, 600, 400);
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(150, 140, 300, 160);
-  ctx.fillStyle = '#1B4332';
-  ctx.fillRect(170, 160, 120, 80);
-
-  ctx.fillStyle = '#1E293B';
-  ctx.beginPath();
-  ctx.arc(200, 300, 30, 0, Math.PI * 2);
-  ctx.arc(400, 300, 30, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = '#FFD166';
-  ctx.font = 'bold 22px Pretendard';
-  ctx.fillText('🐾 SNOOPY GARDEN RETURN AUTHENTICATED', 50, 60);
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = '16px Pretendard';
-  ctx.fillText(`Timestamp: ${formatTimestamp()}`, 50, 95);
-  ctx.fillText(`Status: Mobile Authentication (정상반납)`, 50, 120);
-
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-  setCapturedPhoto(dataUrl);
-}
-
 function setCapturedPhoto(dataUrl) {
   stopWebcam();
   document.getElementById('webcam-preview').classList.add('hidden');
   document.getElementById('camera-placeholder').classList.add('hidden');
-  document.getElementById('capture-photo-btn').classList.add('hidden');
 
   const img = document.getElementById('photo-preview-img');
   img.src = dataUrl;
@@ -1044,7 +1041,6 @@ function setCapturedPhoto(dataUrl) {
   if (retakeBtn) retakeBtn.classList.remove('hidden');
 
   document.getElementById('captured-photo-data').value = dataUrl;
-  document.getElementById('submit-return-btn').disabled = false;
 }
 
 // Return Handler
@@ -1060,9 +1056,35 @@ function handleReturnSubmit(e) {
   const note = document.getElementById('return-note').value.trim();
   let photoData = document.getElementById('captured-photo-data').value;
 
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = '⏳ 반납 등록 처리 중...';
+
+  // 📸 Capture Frame instantly if webcam is active on submit click!
+  if (!photoData && activeWebcamStream) {
+    try {
+      const video = document.getElementById('webcam-preview');
+      const canvas = document.getElementById('photo-canvas');
+      const context = canvas.getContext('2d');
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      photoData = canvas.toDataURL('image/jpeg', 0.85);
+      setCapturedPhoto(photoData);
+    } catch (err) {
+      console.error('Instant frame capture failed:', err);
+    }
+  }
+
+  // Strictly block submission if photo is missing!
   if (!photoData) {
-    attachPresetPhoto();
-    photoData = document.getElementById('captured-photo-data').value;
+    alert('⚠️ [반납 오류] 현장 인증 사진 촬영이 필수입니다!\n카메라 화면을 보며 반납을 완료하거나, [사진 업로드] 버튼으로 직접 찍은 사진 파일을 첨부해 주세요.');
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+    return;
   }
 
   const cart = carts.find(c => c.id === cartId);
@@ -1369,8 +1391,8 @@ function updateStats() {
   const inUse = carts.filter(c => c.status === 'IN_USE').length;
   const returnedCount = logs.filter(l => l.status === '반납 완료').length;
 
-  statTotal.textContent = `${total}대`;
-  statAvailable.textContent = `${available}대`;
-  statInUse.textContent = `${inUse}대`;
-  statReturned.textContent = `${returnedCount}건`;
+  if (statTotal) statTotal.textContent = `${total}대`;
+  if (statAvailable) statAvailable.textContent = `${available}대`;
+  if (statInUse) statInUse.textContent = `${inUse}대`;
+  if (statReturned) statReturned.textContent = `${returnedCount}건`;
 }

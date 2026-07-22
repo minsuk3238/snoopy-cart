@@ -101,13 +101,6 @@
             <span class="value" id="stat-in-use">0대</span>
           </div>
         </div>
-        <div class="summary-card returned">
-          <div class="card-icon">📸</div>
-          <div class="card-info">
-            <span class="label">오늘 반납 완료</span>
-            <span class="value" id="stat-returned">0건</span>
-          </div>
-        </div>
       </div>
 
       <!-- 실시간 다중 기기 상태 동기화 배너 -->
@@ -129,7 +122,6 @@
       <div class="section-header toolbar">
         <div>
           <h2>스누피가든 보유 차량 목록 (총 5대)</h2>
-          <span class="section-sub">카메라 권한이 없어도 기본 대체 인증으로 반납 처리가 가능합니다.</span>
         </div>
         <button class="btn btn-sm btn-outline" id="refresh-grid-btn">🔄 현황 새로고침</button>
       </div>
@@ -332,7 +324,7 @@
           <!-- 오른쪽: 실시간 카메라 & 유연한 대체 인증 -->
           <div class="return-photo-side">
             <label class="photo-title">반납 현장 사진 인증 *</label>
-            <div class="camera-notice-badge" id="camera-notice-status">⚡ 카메라 촬영 또는 대체 파일/자동 인증이 가능합니다.</div>
+            <div class="camera-notice-badge" id="camera-notice-status">⚡ 반납하려면 현장 사진 촬영이 필수입니다.</div>
             
             <div class="camera-wrapper">
               <video id="webcam-preview" autoplay playsinline class="hidden"></video>
@@ -341,19 +333,17 @@
 
               <div id="camera-placeholder" class="camera-placeholder">
                 <div class="placeholder-icon">📷</div>
-                <p id="placeholder-status-text">카메라 켜기 또는 아래 버튼으로 인증해주세요.</p>
+                <p id="placeholder-status-text">카메라가 시작되는 중...</p>
               </div>
             </div>
 
             <div class="camera-controls">
-              <button type="button" class="btn btn-primary" id="start-webcam-btn">📷 카메라 켜기</button>
-              <button type="button" class="btn btn-accent hidden" id="capture-photo-btn">⚡ 캡처하기</button>
-              <button type="button" class="btn btn-outline" id="bypass-photo-btn">✨ 기본 사진으로 즉시 인증</button>
-              <label class="btn btn-outline file-input-label" style="display: none;" id="file-input-wrapper">
-                📁 파일 선택
-                <input type="file" id="fallback-file-input" accept="image/*">
+              <button type="button" class="btn btn-primary hidden" id="start-webcam-btn">📷 카메라 켜기</button>
+              <label class="btn btn-outline file-input-label" id="file-input-wrapper">
+                📁 사진 업로드 (대체)
+                <input type="file" id="fallback-file-input" accept="image/*" style="display: none;">
               </label>
-              <button type="button" class="btn btn-outline hidden" id="retake-photo-btn">🔄 다시 인증하기</button>
+              <button type="button" class="btn btn-outline hidden" id="retake-photo-btn">🔄 다시 촬영하기</button>
             </div>
             <input type="hidden" id="captured-photo-data" required>
           </div>
@@ -362,7 +352,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary modal-cancel">취소</button>
           <button type="submit" class="btn btn-success" id="submit-return-btn">
-            ✅ 반납 완료 & 구글시트 전송
+            📸 촬영 및 반납 완료
           </button>
         </div>
       </form>
