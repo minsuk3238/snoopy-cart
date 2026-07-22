@@ -679,3 +679,335 @@ body {
 }
 
 .help-text { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; display: block; }
+
+/* ==========================================================================
+   Mobile-Optimized Layout Override (Premium Responsive UI Rebuild)
+   ========================================================================== */
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 80px; /* Space for bottom tab nav bar */
+    background-color: #F3F4F6;
+  }
+
+  /* Compact Top Header */
+  .app-header {
+    padding: 0.85rem 1rem;
+    position: sticky;
+    top: 0;
+  }
+
+  .header-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .brand {
+    text-align: center;
+  }
+
+  .brand-badge {
+    font-size: 0.7rem;
+    padding: 2px 10px;
+  }
+
+  .brand-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+
+  /* Mobile Top Admin Menu Panel */
+  .mobile-admin-header {
+    display: flex !important;
+    justify-content: space-between;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 6px;
+    border-radius: var(--radius-md);
+    margin-top: 4px;
+  }
+
+  .mobile-admin-header .nav-btn {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 8px 6px;
+    justify-content: center;
+    border-radius: 6px;
+    text-align: center;
+  }
+
+  /* Main Navigation Bottom Tab Bar (Native-App Look) */
+  .nav-tabs {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #111827;
+    border-top: 1px solid #374151;
+    border-radius: 0;
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-around;
+    z-index: 1000;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.25);
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+
+  /* Re-style bottom navigation buttons */
+  .nav-tabs .nav-btn {
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 0.7rem;
+    padding: 6px 2px;
+    color: #9CA3AF;
+    background: transparent;
+    border: none;
+    align-items: center;
+    text-align: center;
+  }
+
+  .nav-tabs .nav-btn .icon {
+    font-size: 1.35rem;
+  }
+
+  .nav-tabs .nav-btn.active {
+    background: transparent;
+    color: #34D399; /* Vibrant emerald accent */
+    font-weight: 700;
+    box-shadow: none;
+  }
+
+  /* Hide Desktop Admin items from Bottom Navigation */
+  .nav-tabs .profile-btn,
+  .nav-tabs .sheet-link-btn,
+  .nav-tabs .settings-btn {
+    display: none !important;
+  }
+
+  /* App Container Padding */
+  .app-container {
+    margin: 1rem auto;
+    padding: 0 0.75rem;
+  }
+
+  /* Redesign Profile Summary Card on Mobile */
+  .profile-bar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.75rem;
+    gap: 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .profile-bar-info {
+    gap: 10px;
+  }
+
+  .profile-avatar-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.5rem;
+  }
+
+  .profile-bar-title {
+    font-size: 0.95rem;
+  }
+
+  .profile-bar-sub {
+    font-size: 0.78rem;
+  }
+
+  /* Profile buttons layout */
+  .profile-bar div[style*="display: flex"] {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .profile-bar .btn-sm {
+    width: 100%;
+    padding: 8px;
+    font-size: 0.82rem;
+  }
+
+  /* Re-style Stats grid to 2 columns */
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .summary-card {
+    padding: 10px;
+    gap: 8px;
+    border-radius: var(--radius-md);
+  }
+
+  .card-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.4rem;
+  }
+
+  .card-info .label {
+    font-size: 0.75rem;
+  }
+
+  .card-info .value {
+    font-size: 1.25rem;
+  }
+
+  /* Re-style Sync banner */
+  .sync-banner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.85rem;
+    gap: 10px;
+    border-radius: var(--radius-md);
+  }
+
+  .banner-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .banner-actions .btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 0.82rem;
+  }
+
+  /* Hide bottom Settings button to avoid clutter */
+  #banner-setup-btn {
+    display: none !important;
+  }
+
+  /* Card Grid Rebuild for Easy Touch Actions */
+  .cart-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cart-card {
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  .cart-card-header {
+    padding: 10px 12px;
+  }
+
+  .cart-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 1.2rem;
+  }
+
+  .cart-name {
+    font-size: 1.05rem;
+  }
+
+  .cart-model {
+    font-size: 0.75rem;
+  }
+
+  .cart-card-body {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .cart-info-row {
+    font-size: 0.82rem;
+    padding: 2px 0;
+  }
+
+  .cart-card-footer {
+    padding: 10px 12px;
+  }
+
+  .cart-card-footer .btn {
+    padding: 12px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+  }
+
+  /* Sheets Log Tab Overrides for Mobile (Horizontal scroll and search) */
+  .section-header.toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .toolbar-actions .form-control {
+    width: 100%;
+  }
+
+  .toolbar-actions .btn {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .sheet-table th, .sheet-table td {
+    padding: 10px;
+    font-size: 0.8rem;
+  }
+
+  /* Bottom Drawer sheet look for Modals (Feels like premium iOS/Android Drawer) */
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal-card {
+    border-radius: 20px 20px 0 0;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .modal-overlay.active .modal-card {
+    transform: translateY(0);
+  }
+
+  .modal-header {
+    padding: 15px;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .modal-card form, .modal-body {
+    padding: 15px;
+  }
+
+  .modal-footer {
+    padding: 12px 15px;
+  }
+
+  /* Return Modal layout stack on Mobile */
+  .return-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .camera-wrapper {
+    height: 180px;
+  }
+
+  .camera-controls .btn {
+    flex: 1 1 45%;
+    font-size: 0.8rem;
+  }
+}

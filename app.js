@@ -59,10 +59,16 @@ const statAvailable = document.getElementById('stat-available');
 const statInUse = document.getElementById('stat-in-use');
 const statReturned = document.getElementById('stat-returned');
 
-// Password Verification Helper
+let isAdminAuthenticated = false;
+
+// Password Verification Helper (Cached for current session)
 function checkAdminPassword(actionName = '관리자 메뉴') {
+  if (isAdminAuthenticated) {
+    return true;
+  }
   const input = prompt(`🔒 [${actionName}] 접근 권한 확인\n관리자 비밀번호 4자리를 입력하세요:`);
   if (input === MASTER_ADMIN_PASSWORD) {
+    isAdminAuthenticated = true;
     return true;
   } else if (input === null) {
     return false;
@@ -169,8 +175,14 @@ function updateSyncBannerStatus() {
 function setupNavigation() {
   const navBtns = document.querySelectorAll('.nav-btn[data-tab]');
   navBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
       const targetTab = btn.getAttribute('data-tab');
+      if (targetTab !== 'dashboard-tab') {
+        if (!checkAdminPassword('관리자 메뉴')) {
+          e.preventDefault();
+          return;
+        }
+      }
       navBtns.forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
 
@@ -194,6 +206,54 @@ function setupEventListeners() {
   });
   document.getElementById('quick-edit-profile-btn').addEventListener('click', () => {
     if (checkAdminPassword('프로필 수정')) openProfileModal();
+  });
+
+  const profileSummaryBar = document.getElementById('profile-summary-bar');
+  if (profileSummaryBar) {
+    profileSummaryBar.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+        if (checkAdminPassword('프로필 수정')) {
+          openProfileModal();
+        }
+      }
+    });
+  }
+
+  // Mobile Top Header Actions delegation
+  const openProfileMobileBtn = document.getElementById('open-profile-mobile-btn');
+  if (openProfileMobileBtn) {
+    openProfileMobileBtn.addEventListener('click', () => {
+      document.getElementById('open-profile-btn').click();
+    });
+  }
+  const openSettingsMobileBtn = document.getElementById('open-settings-mobile-btn');
+  if (openSettingsMobileBtn) {
+    openSettingsMobileBtn.addEventListener('click', () => {
+      document.getElementById('open-settings-btn').click();
+    });
+  }
+  const directGoogleSheetMobileBtn = document.getElementById('direct-google-sheet-mobile-btn');
+  if (directGoogleSheetMobileBtn) {
+    directGoogleSheetMobileBtn.addEventListener('click', (e) => {
+      if (!checkAdminPassword('구글 시트 바로가기')) {
+        e.preventDefault();
+      }
+    });
+  }
+
+  const sheetLinks = [
+    document.getElementById('direct-google-sheet-btn'),
+    document.getElementById('banner-sheet-direct-link'),
+    document.getElementById('sheet-tab-direct-link')
+  ];
+  sheetLinks.forEach(link => {
+    if (link) {
+      link.addEventListener('click', (e) => {
+        if (!checkAdminPassword('구글 시트 바로가기')) {
+          e.preventDefault();
+        }
+      });
+    }
   });
 
   const systemResetBtn = document.getElementById('system-reset-btn');

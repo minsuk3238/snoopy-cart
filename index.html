@@ -17,6 +17,20 @@
         <div class="brand-badge">🐾 Snoopy Garden</div>
         <h1 class="brand-title">스마트 차량 & 카트 대여 센터</h1>
       </div>
+      
+      <!-- 모바일 전용 상단 관리자 퀵 메뉴 (기본 숨김, 모바일 미디어 쿼리에서 노출) -->
+      <div class="mobile-admin-header" style="display: none;">
+        <button class="nav-btn profile-btn" id="open-profile-mobile-btn">
+          <span class="icon">👤</span> 프로필
+        </button>
+        <a id="direct-google-sheet-mobile-btn" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="nav-btn sheet-link-btn">
+          <span class="icon">🟢</span> 시트열기
+        </a>
+        <button class="nav-btn settings-btn" id="open-settings-mobile-btn">
+          <span class="icon">🔗</span> 설정
+        </button>
+      </div>
+
       <nav class="nav-tabs">
         <button class="nav-btn active" data-tab="dashboard-tab">
           <span class="icon">🚗</span> 차량/카트 현황
