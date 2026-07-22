@@ -568,6 +568,12 @@ function fetchCloudCartStatus(showToast = false) {
 
       // Reconstruct Log Entry for Table & Archive Gallery on ALL devices!
       const isReturned = !isCurrentlyInUse;
+      
+      // Use photoText if it contains base64 image data, otherwise fallback to preset template
+      const resolvedPhotoData = isReturned 
+        ? (photoText.startsWith('data:image/') ? photoText : createPresetReturnPhoto(rawCartName, renter, returnTimeStr)) 
+        : null;
+
       cloudLogs.push({
         id: 'GAS-' + i + '-' + timestampStr,
         timestamp: timestampStr,
@@ -579,7 +585,7 @@ function fetchCloudCartStatus(showToast = false) {
         returnTime: returnTimeStr || (isCurrentlyInUse ? '대여 중...' : '-'),
         duration: duration || (isCurrentlyInUse ? '사용 중' : '-'),
         location: location || '-',
-        photoData: isReturned ? createPresetReturnPhoto(rawCartName, renter, returnTimeStr) : null,
+        photoData: resolvedPhotoData,
         status: isCurrentlyInUse ? '사용 중' : '반납 완료',
         note: note,
         gasSynced: true
@@ -788,16 +794,47 @@ window.openRentModal = function(cartId) {
   document.getElementById('rent-modal-title').textContent = `${cart.icon || '🚗'} ${cart.name} 대여하기`;
 
   const autoNotice = document.getElementById('auto-filled-notice');
+  const renterNameInput = document.getElementById('renter-name');
+  const renterDeptInput = document.getElementById('renter-dept');
+  const renterPhoneInput = document.getElementById('renter-phone');
 
   if (userProfile.name) {
-    document.getElementById('renter-name').value = userProfile.name;
-    document.getElementById('renter-dept').value = userProfile.dept || '';
-    document.getElementById('renter-phone').value = userProfile.phone || '';
+    renterNameInput.value = userProfile.name;
+    renterDeptInput.value = userProfile.dept || '';
+    renterPhoneInput.value = userProfile.phone || '';
+    
+    // Set to read-only so users cannot type a different name manually during checkout
+    renterNameInput.readOnly = true;
+    renterDeptInput.readOnly = true;
+    renterPhoneInput.readOnly = true;
+    
+    // Styling overrides for visual indicator
+    renterNameInput.style.backgroundColor = '#E2E8F0';
+    renterDeptInput.style.backgroundColor = '#E2E8F0';
+    renterPhoneInput.style.backgroundColor = '#E2E8F0';
+    renterNameInput.style.cursor = 'not-allowed';
+    renterDeptInput.style.cursor = 'not-allowed';
+    renterPhoneInput.style.cursor = 'not-allowed';
+
     autoNotice.style.display = 'block';
+    autoNotice.textContent = '✨ 프로필 정보로 자동 잠금 입력되었습니다. (변경 시 관리자 확인 필요)';
   } else {
-    document.getElementById('renter-name').value = '';
-    document.getElementById('renter-dept').value = '';
-    document.getElementById('renter-phone').value = '';
+    renterNameInput.value = '';
+    renterDeptInput.value = '';
+    renterPhoneInput.value = '';
+    
+    // Make editable for initial registration on checkout
+    renterNameInput.readOnly = false;
+    renterDeptInput.readOnly = false;
+    renterPhoneInput.readOnly = false;
+    
+    renterNameInput.style.backgroundColor = '';
+    renterDeptInput.style.backgroundColor = '';
+    renterPhoneInput.style.backgroundColor = '';
+    renterNameInput.style.cursor = '';
+    renterDeptInput.style.cursor = '';
+    renterPhoneInput.style.cursor = '';
+
     autoNotice.style.display = 'none';
   }
 
@@ -1090,41 +1127,85 @@ function handleReturnSubmit(e) {
   alert(`✅ [${cart.name}] 반납 처리 완료! 구글 시트로 백그라운드 전송됩니다.`);
 }
 
+// Helper to scale down and compress base64 webcam photos to keep under Google Sheets cell size limits (~6KB)
+function getCompressedBase64(dataUrl, callback) {
+  if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+    callback(dataUrl);
+    return;
+  }
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    let width = img.width;
+    let height = img.height;
+    
+    // Bounding box of max 320px
+    const max_size = 320;
+    if (width > height) {
+      if (width > max_size) {
+        height = Math.round(height * (max_size / width));
+        width = max_size;
+      }
+    } else {
+      if (height > max_size) {
+        width = Math.round(width * (max_size / height));
+        height = max_size;
+      }
+    }
+    
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, width, height);
+    
+    // Save as compressed jpeg (quality 0.5 is extremely small and fast to sync)
+    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+    callback(compressedDataUrl);
+  };
+  img.onerror = function() {
+    callback(dataUrl);
+  };
+  img.src = dataUrl;
+}
+
 // Ultra-robust Google Apps Script Webhook sender with fallback
 function sendToGoogleSheet(logData) {
   const targetUrl = DEFAULT_WEBHOOK_URL;
   if (!targetUrl) return;
 
-  const payload = JSON.stringify({
-    timestamp: logData.timestamp,
-    cartId: logData.cartId + ' (' + logData.cartName + ')',
-    renter: logData.renter,
-    dept: logData.dept || '',
-    rentTime: logData.rentTime,
-    returnTime: logData.returnTime,
-    duration: logData.duration,
-    location: logData.location,
-    photoUrl: '브라우저 갤러리 보존됨',
-    note: logData.note || ''
-  });
-
-  try {
-    fetch(targetUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: payload
-    })
-    .then(() => {
-      logData.gasSynced = true;
-      saveLogs();
-      renderSheetLogs();
-    })
-    .catch(err => {
-      console.error('GAS Webhook Error:', err);
+  // Compress photo asynchronously first before posting to Google Sheet
+  getCompressedBase64(logData.photoData, (compressedPhoto) => {
+    const payload = JSON.stringify({
+      timestamp: logData.timestamp,
+      cartId: logData.cartId + ' (' + logData.cartName + ')',
+      renter: logData.renter,
+      dept: logData.dept || '',
+      rentTime: logData.rentTime,
+      returnTime: logData.returnTime,
+      duration: logData.duration,
+      location: logData.location,
+      photoUrl: compressedPhoto || '사진 없음',
+      note: logData.note || ''
     });
-  } catch(e) {
-    console.error('GAS POST exception:', e);
-  }
+
+    try {
+      fetch(targetUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: payload
+      })
+      .then(() => {
+        logData.gasSynced = true;
+        saveLogs();
+        renderSheetLogs();
+      })
+      .catch(err => {
+        console.error('GAS Webhook Error:', err);
+      });
+    } catch(e) {
+      console.error('GAS POST exception:', e);
+    }
+  });
 }
 
 // Render Google Sheets Style Log Table
