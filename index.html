@@ -41,9 +41,7 @@
         <button class="nav-btn admin-only" data-tab="sheets-tab">
           <span class="icon">📊</span> 구글시트형 로그
         </button>
-        <button class="nav-btn admin-only" data-tab="archive-tab">
-          <span class="icon">🖼️</span> 반납 사진 아카이브
-        </button>
+
         <button class="nav-btn profile-btn" id="open-profile-btn">
           <span class="icon">👤</span> <span id="header-profile-label">내 프로필 설정</span>
         </button>
@@ -174,29 +172,7 @@
       </div>
     </section>
 
-    <!-- 반납 사진 아카이브 탭 -->
-    <section id="archive-tab" class="tab-content">
-      <div class="section-header toolbar">
-        <div>
-          <h2>반납 사진 아카이브 갤러리</h2>
-          <span class="section-sub">차량 반납 시 촬영 및 인증된 사진 모음 및 보관소</span>
-        </div>
-        <div class="toolbar-actions">
-          <select id="archive-cart-filter" class="form-control">
-            <option value="ALL">전체 차량 보기</option>
-            <option value="CART-01">1호 카트 (2인승)</option>
-            <option value="CART-03">3호 카트 (4인승)</option>
-            <option value="LABO-01">라보 (작업차량)</option>
-            <option value="BUS-SNOOPY">스누피 버스</option>
-            <option value="BUS-BELLE">벨 버스</option>
-          </select>
-        </div>
-      </div>
 
-      <div class="archive-grid" id="archive-gallery-container">
-        <!-- JS dynamic rendering -->
-      </div>
-    </section>
   </main>
 
   <!-- ==================== 모달창 모음 ==================== -->

@@ -428,8 +428,10 @@ function setupEventListeners() {
     });
   }
 
-  document.getElementById('log-search-input').addEventListener('input', renderSheetLogs);
-  document.getElementById('archive-cart-filter').addEventListener('change', renderArchiveGallery);
+  const logSearchInput = document.getElementById('log-search-input');
+  if (logSearchInput) {
+    logSearchInput.addEventListener('input', renderSheetLogs);
+  }
 
   document.getElementById('save-settings-btn').addEventListener('click', () => {
     webhookUrl = gasWebhookUrlInput.value.trim() || DEFAULT_WEBHOOK_URL;
@@ -1306,8 +1308,12 @@ function exportLogsToCSV() {
 
 // Render Photo Archive Gallery
 function renderArchiveGallery() {
-  const filterCart = document.getElementById('archive-cart-filter').value;
-  archiveGalleryContainer.innerHTML = '';
+  const container = document.getElementById('archive-gallery-container');
+  if (!container) return; // Exit if archive tab is removed from DOM
+
+  const filterEl = document.getElementById('archive-cart-filter');
+  const filterCart = filterEl ? filterEl.value : 'ALL';
+  container.innerHTML = '';
 
   const returnedLogsWithPhoto = logs.filter(l => l.photoData && (filterCart === 'ALL' || l.cartId === filterCart));
 
