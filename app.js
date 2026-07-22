@@ -262,19 +262,17 @@ function setupEventListeners() {
   });
   
   document.getElementById('open-profile-btn').addEventListener('click', () => {
-    if (checkAdminPassword('프로필 수정')) openProfileModal();
+    openProfileModal();
   });
   document.getElementById('quick-edit-profile-btn').addEventListener('click', () => {
-    if (checkAdminPassword('프로필 수정')) openProfileModal();
+    openProfileModal();
   });
 
   const profileSummaryBar = document.getElementById('profile-summary-bar');
   if (profileSummaryBar) {
     profileSummaryBar.addEventListener('click', (e) => {
       if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
-        if (checkAdminPassword('프로필 수정')) {
-          openProfileModal();
-        }
+        openProfileModal();
       }
     });
   }
