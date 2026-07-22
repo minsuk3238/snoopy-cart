@@ -987,7 +987,7 @@ function startWebcam() {
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     document.getElementById('camera-placeholder').classList.remove('hidden');
-    document.getElementById('placeholder-status-text').textContent = '⚠️ 이 브라우저는 카메라를 지원하지 않습니다. 아래 [사진 업로드] 버튼을 이용해 주세요.';
+    document.getElementById('placeholder-status-text').textContent = '⚠️ 이 브라우저는 카메라를 지원하지 않거나 권한이 차단되었습니다. 실시간 카메라 촬영으로만 반납이 가능합니다.';
     const startBtn = document.getElementById('start-webcam-btn');
     if (startBtn) startBtn.classList.add('hidden');
     return;
@@ -1003,9 +1003,8 @@ function startWebcam() {
       if (startBtn) startBtn.classList.add('hidden');
     })
     .catch(err => {
-      console.warn('Camera access error:', err);
       document.getElementById('camera-placeholder').classList.remove('hidden');
-      document.getElementById('placeholder-status-text').textContent = '⚠️ 카메라를 시작하지 못했습니다. 아래 [사진 업로드] 버튼으로 현장 사진을 업로드해 주세요.';
+      document.getElementById('placeholder-status-text').textContent = '⚠️ 카메라를 시작하지 못했습니다. 카메라 접근 권한(허용)을 설정하거나 브라우저 설정을 확인해 주세요.';
       const startBtn = document.getElementById('start-webcam-btn');
       if (startBtn) startBtn.classList.remove('hidden');
     });
@@ -1071,7 +1070,7 @@ function handleReturnSubmit(e) {
 
   // Strictly block submission if photo is missing!
   if (!photoData) {
-    alert('⚠️ [반납 오류] 현장 인증 사진 촬영이 필수입니다!\n카메라 화면을 보며 반납을 완료하거나, [사진 업로드] 버튼으로 직접 찍은 사진 파일을 첨부해 주세요.');
+    alert('⚠️ [반납 오류] 현장 인증 사진 촬영이 필수입니다!\n실시간 카메라 화면을 향해 비춘 상태로 [촬영 및 반납 완료]를 눌러 촬영을 완료해 주세요.');
     submitBtn.disabled = false;
     submitBtn.textContent = originalText;
     return;
