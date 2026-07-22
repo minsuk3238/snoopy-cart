@@ -261,18 +261,25 @@ function setupEventListeners() {
     if (checkAdminPassword('연동 설정')) openModal('settings-modal');
   });
   
-  document.getElementById('open-profile-btn').addEventListener('click', () => {
-    openProfileModal();
-  });
-  document.getElementById('quick-edit-profile-btn').addEventListener('click', () => {
-    openProfileModal();
-  });
+  const handleProfileClick = () => {
+    // Initial profile registration is free. Subsequent modifications require master password 1590
+    if (!userProfile.name) {
+      openProfileModal();
+    } else {
+      if (checkAdminPassword('프로필 수정')) {
+        openProfileModal();
+      }
+    }
+  };
+
+  document.getElementById('open-profile-btn').addEventListener('click', handleProfileClick);
+  document.getElementById('quick-edit-profile-btn').addEventListener('click', handleProfileClick);
 
   const profileSummaryBar = document.getElementById('profile-summary-bar');
   if (profileSummaryBar) {
     profileSummaryBar.addEventListener('click', (e) => {
       if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
-        openProfileModal();
+        handleProfileClick();
       }
     });
   }
