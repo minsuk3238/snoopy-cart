@@ -20,13 +20,16 @@
       
       <!-- 모바일 전용 상단 관리자 퀵 메뉴 (기본 숨김, 모바일 미디어 쿼리에서 노출) -->
       <div class="mobile-admin-header" style="display: none;">
-        <button class="nav-btn profile-btn" id="open-profile-mobile-btn">
+        <button class="nav-btn admin-toggle-btn" id="admin-mode-toggle-mobile-btn" style="background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3);">
+          <span class="icon">🔒</span> 관리자
+        </button>
+        <button class="nav-btn profile-btn admin-only" id="open-profile-mobile-btn">
           <span class="icon">👤</span> 프로필
         </button>
-        <a id="direct-google-sheet-mobile-btn" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="nav-btn sheet-link-btn">
+        <a id="direct-google-sheet-mobile-btn" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="nav-btn sheet-link-btn admin-only">
           <span class="icon">🟢</span> 시트열기
         </a>
-        <button class="nav-btn settings-btn" id="open-settings-mobile-btn">
+        <button class="nav-btn settings-btn admin-only" id="open-settings-mobile-btn">
           <span class="icon">🔗</span> 설정
         </button>
       </div>
@@ -35,20 +38,23 @@
         <button class="nav-btn active" data-tab="dashboard-tab">
           <span class="icon">🚗</span> 차량/카트 현황
         </button>
-        <button class="nav-btn" data-tab="sheets-tab">
+        <button class="nav-btn admin-only" data-tab="sheets-tab">
           <span class="icon">📊</span> 구글시트형 로그
         </button>
-        <button class="nav-btn" data-tab="archive-tab">
+        <button class="nav-btn admin-only" data-tab="archive-tab">
           <span class="icon">🖼️</span> 반납 사진 아카이브
         </button>
-        <button class="nav-btn profile-btn" id="open-profile-btn">
+        <button class="nav-btn profile-btn admin-only" id="open-profile-btn">
           <span class="icon">👤</span> <span id="header-profile-label">내 프로필 설정</span>
         </button>
-        <a id="direct-google-sheet-btn" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="nav-btn sheet-link-btn">
+        <a id="direct-google-sheet-btn" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="nav-btn sheet-link-btn admin-only">
           <span class="icon">🟢</span> 구글 시트 바로가기
         </a>
-        <button class="nav-btn settings-btn" id="open-settings-btn">
+        <button class="nav-btn settings-btn admin-only" id="open-settings-btn">
           <span class="icon">🔗</span> 연동 설정
+        </button>
+        <button class="nav-btn admin-toggle-btn" id="admin-mode-toggle-btn" style="background: rgba(239, 68, 68, 0.15); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.3);">
+          <span class="icon">🔒</span> 관리자 모드
         </button>
       </nav>
     </div>
@@ -67,8 +73,8 @@
           </div>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button class="btn btn-sm btn-outline" id="quick-edit-profile-btn">✏️ 프로필 등록 / 수정</button>
-          <button class="btn btn-sm btn-secondary" id="system-reset-btn">🗑️ 현황 전체 초기화</button>
+          <button class="btn btn-sm btn-outline admin-only" id="quick-edit-profile-btn">✏️ 프로필 등록 / 수정</button>
+          <button class="btn btn-sm btn-secondary admin-only" id="system-reset-btn">🗑️ 현황 전체 초기화</button>
         </div>
       </div>
 
@@ -112,10 +118,10 @@
         </div>
         <div class="banner-actions">
           <button class="btn btn-sm btn-outline" id="manual-sync-btn">🔄 실시간 상태 동기화</button>
-          <a id="banner-sheet-direct-link" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="btn btn-sm btn-success">
+          <a id="banner-sheet-direct-link" href="https://docs.google.com/spreadsheets/d/1Q0d3NiDLLI7foZELqT0fZwDAcyjP2oIQITpfsu9NEXc/edit?gid=0#gid=0" target="_blank" class="btn btn-sm btn-success admin-only">
             🟢 내 구글 시트 열기
           </a>
-          <button class="btn btn-sm btn-outline" id="banner-setup-btn">연동 설정</button>
+          <button class="btn btn-sm btn-outline admin-only" id="banner-setup-btn">연동 설정</button>
         </div>
       </div>
 

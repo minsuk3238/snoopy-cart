@@ -69,6 +69,7 @@ function checkAdminPassword(actionName = '관리자 메뉴') {
   const input = prompt(`🔒 [${actionName}] 접근 권한 확인\n관리자 비밀번호 4자리를 입력하세요:`);
   if (input === MASTER_ADMIN_PASSWORD) {
     isAdminAuthenticated = true;
+    updateAdminToggleUI();
     return true;
   } else if (input === null) {
     return false;
@@ -78,12 +79,71 @@ function checkAdminPassword(actionName = '관리자 메뉴') {
   }
 }
 
+// Toggle Admin Mode Status and visibility of features
+function toggleAdminMode() {
+  if (isAdminAuthenticated) {
+    isAdminAuthenticated = false;
+    updateAdminToggleUI();
+    // Redirect user to dashboard tab if they were inside locked admin tabs
+    const activeTabBtn = document.querySelector('.nav-btn.active');
+    if (activeTabBtn && activeTabBtn.getAttribute('data-tab') !== 'dashboard-tab') {
+      const dashboardBtn = document.querySelector('.nav-btn[data-tab="dashboard-tab"]');
+      if (dashboardBtn) dashboardBtn.click();
+    }
+    alert('🔒 관리자 모드가 안전하게 로그아웃되었습니다.');
+  } else {
+    const input = prompt('🔑 관리자 비밀번호 4자리를 입력하세요:');
+    if (input === MASTER_ADMIN_PASSWORD) {
+      isAdminAuthenticated = true;
+      updateAdminToggleUI();
+      alert('🔓 관리자 인증 성공! 전체 관리용 탭 및 버튼이 모두 노출되었습니다.');
+    } else if (input !== null) {
+      alert('❌ 비밀번호가 올바르지 않습니다.');
+    }
+  }
+}
+
+// Update Admin Toggle Buttons GUI
+function updateAdminToggleUI() {
+  const toggleBtn = document.getElementById('admin-mode-toggle-btn');
+  const toggleMobileBtn = document.getElementById('admin-mode-toggle-mobile-btn');
+  
+  if (isAdminAuthenticated) {
+    if (toggleBtn) {
+      toggleBtn.innerHTML = '<span class="icon">🔓</span> 로그아웃';
+      toggleBtn.style.background = 'rgba(16, 185, 129, 0.15)';
+      toggleBtn.style.color = '#10B981';
+      toggleBtn.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+    }
+    if (toggleMobileBtn) {
+      toggleMobileBtn.innerHTML = '<span class="icon">🔓</span> 로그아웃';
+      toggleMobileBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+      toggleMobileBtn.style.color = '#34D399';
+    }
+    document.body.classList.add('admin-mode-active');
+  } else {
+    if (toggleBtn) {
+      toggleBtn.innerHTML = '<span class="icon">🔒</span> 관리자 모드';
+      toggleBtn.style.background = 'rgba(239, 68, 68, 0.15)';
+      toggleBtn.style.color = '#F87171';
+      toggleBtn.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+    }
+    if (toggleMobileBtn) {
+      toggleMobileBtn.innerHTML = '<span class="icon">🔒</span> 관리자';
+      toggleMobileBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+      toggleMobileBtn.style.color = '#F87171';
+    }
+    document.body.classList.remove('admin-mode-active');
+  }
+}
+
 // Initialize App
 document.addEventListener('DOMContentLoaded', () => {
   loadStorageData();
   setupNavigation();
   setupEventListeners();
   updateProfileUI();
+  updateAdminToggleUI(); // Render the initial admin toggle UI state (locked)
   renderCarts();
   renderSheetLogs();
   renderArchiveGallery();
@@ -239,6 +299,16 @@ function setupEventListeners() {
         e.preventDefault();
       }
     });
+  }
+
+  // Admin mode toggle buttons listeners
+  const adminToggleBtn = document.getElementById('admin-mode-toggle-btn');
+  if (adminToggleBtn) {
+    adminToggleBtn.addEventListener('click', toggleAdminMode);
+  }
+  const adminToggleMobileBtn = document.getElementById('admin-mode-toggle-mobile-btn');
+  if (adminToggleMobileBtn) {
+    adminToggleMobileBtn.addEventListener('click', toggleAdminMode);
   }
 
   const sheetLinks = [
@@ -536,9 +606,10 @@ function fetchCloudCartStatus(showToast = false) {
     // Merge & update logs dynamically across all devices
     if (cloudLogs.length > 0) {
       cloudLogs.forEach(cLog => {
+        // Find existing local log by timestamp and cartId to preserve actual user-captured photos
         const localMatch = logs.find(l => l.timestamp === cLog.timestamp && l.cartId === cLog.cartId);
         if (localMatch && localMatch.photoData) {
-          cLog.photoData = localMatch.photoData;
+          cLog.photoData = localMatch.photoData; // Preserve original local high-quality webcam photo
         }
       });
       logs = cloudLogs;
@@ -968,7 +1039,8 @@ function handleReturnSubmit(e) {
   const renterDept = cart.currentDept;
   const rentTimeStr = cart.rentTimeStr;
 
-  let activeLog = logs.find(l => l.cartId === cartId && l.status === '사용 중');
+  // Find the exact local log record to append the high-quality captured photo data
+  let activeLog = logs.find(l => l.cartId === cartId && (l.status === '사용 중' || l.returnTime === '대여 중...'));
   if (!activeLog) {
     activeLog = {
       id: 'LOG-' + returnTimeMs,
@@ -985,7 +1057,7 @@ function handleReturnSubmit(e) {
   activeLog.returnTime = returnTimeStr;
   activeLog.duration = durationStr;
   activeLog.location = finalLocation;
-  activeLog.photoData = photoData;
+  activeLog.photoData = photoData; // Store the actual high-quality webcam/fallback photo securely
   activeLog.status = '반납 완료';
   activeLog.note = note;
 

@@ -680,6 +680,24 @@ body {
 
 .help-text { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; display: block; }
 
+/* Admin-only Element Toggles (Controlled by Admin Login Button) */
+.admin-only {
+  display: none !important;
+}
+body.admin-mode-active .admin-only {
+  display: inline-flex !important;
+}
+body.admin-mode-active div.admin-only,
+body.admin-mode-active blockquote.admin-only {
+  display: block !important;
+}
+body.admin-mode-active tr.admin-only {
+  display: table-row !important;
+}
+body.admin-mode-active a.admin-only {
+  display: inline-block !important;
+}
+
 /* ==========================================================================
    Mobile-Optimized Layout Override (Premium Responsive UI Rebuild)
    ========================================================================== */
