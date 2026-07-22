@@ -1090,11 +1090,6 @@ function handleReturnSubmit(e) {
   const cart = carts.find(c => c.id === cartId);
   if (!cart) return;
 
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  const originalText = submitBtn.textContent;
-  submitBtn.disabled = true;
-  submitBtn.textContent = '⏳ 반납 등록 처리 중...';
-
   const returnTimeMs = Date.now();
   const returnTimeStr = formatTimestamp(new Date(returnTimeMs));
   const durationStr = calculateDuration(cart.rentTime);
